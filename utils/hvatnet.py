@@ -83,6 +83,17 @@ class RNN(nn.Module):
         out, _ = self.rnn(x, h0)
         out = self.fc(out)
         return out
+    
+class DepthwiseSeparableConv(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding='same', bias=True):
+        super(DepthwiseSeparableConv, self).__init__()
+        self.depthwise = nn.Conv1d(in_channels, in_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=in_channels, bias=bias)
+        self.pointwise = nn.Conv1d(in_channels, out_channels, kernel_size=1, bias=bias)
+    
+    def forward(self, x):
+        x = self.depthwise(x)
+        x = self.pointwise(x)
+        return x    
 
 class SimpleResBlock(nn.Module):
     """
@@ -94,18 +105,18 @@ class SimpleResBlock(nn.Module):
     def __init__(self, in_channels, kernel_size):
         super(SimpleResBlock, self).__init__()
 
-
-        self.conv1 = nn.Conv1d(in_channels, in_channels,
-                               kernel_size=kernel_size,
-                               bias=True,
-                               padding='same')
+        self.conv1 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
+        # self.conv1 = nn.Conv1d(in_channels, in_channels,
+        #                        kernel_size=kernel_size,
+        #                        bias=True,
+        #                        padding='same')
 
         self.activation = nn.GELU()
-
-        self.conv2 = nn.Conv1d(in_channels, in_channels,
-                               kernel_size=kernel_size,
-                               bias=True,
-                               padding='same')
+        self.conv2 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
+        # self.conv2 = nn.Conv1d(in_channels, in_channels,
+        #                        kernel_size=kernel_size,
+        #                        bias=True,
+        #                        padding='same')
 
 
     def forward(self, x_input):
@@ -254,6 +265,30 @@ class AdvancedDecoder(nn.Module):
         return outputs
 
 
+class AttentionBlock(nn.Module):
+    def __init__(self, in_channels):
+        super(AttentionBlock, self).__init__()
+        self.query_conv = nn.Conv1d(in_channels, in_channels // 8, kernel_size=1)
+        self.key_conv = nn.Conv1d(in_channels, in_channels // 8, kernel_size=1)
+        self.value_conv = nn.Conv1d(in_channels, in_channels, kernel_size=1)
+        self.gamma = nn.Parameter(torch.zeros(1))
+
+    def forward(self, x):
+        batch_size, C, T = x.size()
+        query = self.query_conv(x).view(batch_size, -1, T).permute(0, 2, 1)
+        key = self.key_conv(x).view(batch_size, -1, T)
+        value = self.value_conv(x).view(batch_size, -1, T)
+        
+        attention = torch.bmm(query, key)
+        attention = F.softmax(attention, dim=-1)
+        out = torch.bmm(value, attention.permute(0, 2, 1))
+        out = out.view(batch_size, C, T)
+        
+        out = self.gamma * out + x
+        return out
+
+
+
 class HVATNetv3(nn.Module):
     config = Config
     def __init__(self, config: Config):
@@ -295,6 +330,8 @@ class HVATNetv3(nn.Module):
         self.n_params = sum(p.numel() for p in self.parameters())
         print('Number of parameters:', self.n_params)
 
+        self.attention_block = AttentionBlock(config.n_filters)
+
     def forward(self, x, targets=None):
         """
         x: [batch, n_electrodes, time]
@@ -307,6 +344,7 @@ class HVATNetv3(nn.Module):
         # denoising part
         x = self.spatial_reduce(x)
         x = self.denoiser(x)
+        x = self.attention_block(x)  # Apply attention after denoising
 
         # extract features
         # TODO: add mapper and change encoder to return all features
