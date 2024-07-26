@@ -27,6 +27,7 @@ class Config(Serializable):
     dilation: int
     strides: List[int]
     small_strides: List[int]
+    dropout_rate: float = 0.5 
 
 class TuneModule(nn.Module):
     def __init__(self, n_electrodes=8, temperature=5):
@@ -102,7 +103,7 @@ class SimpleResBlock(nn.Module):
     In features input and output the same.
     So we can apply this block several times.
     """
-    def __init__(self, in_channels, kernel_size):
+    def __init__(self, in_channels, kernel_size, dropout_rate=0.5):
         super(SimpleResBlock, self).__init__()
 
         self.conv1 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
@@ -110,20 +111,25 @@ class SimpleResBlock(nn.Module):
         #                        kernel_size=kernel_size,
         #                        bias=True,
         #                        padding='same')
-
+        self.batch_norm1 = nn.BatchNorm1d(in_channels)  
         self.activation = nn.GELU()
+        self.dropout = nn.Dropout(dropout_rate)
         self.conv2 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
         # self.conv2 = nn.Conv1d(in_channels, in_channels,
         #                        kernel_size=kernel_size,
         #                        bias=True,
         #                        padding='same')
+        self.batch_norm2 = nn.BatchNorm1d(in_channels)
 
 
     def forward(self, x_input):
 
         x = self.conv1(x_input)
+        x = self.batch_norm1(x)
         x = self.activation(x)
+        x = self.dropout(x)
         x = self.conv2(x)
+        x = self.batch_norm2(x)
 
         res = x + x_input
 
@@ -137,7 +143,7 @@ class AdvancedConvBlock(nn.Module):
     To do:
         add res blocks.
     """
-    def __init__(self, in_channels, kernel_size,dilation=1):
+    def __init__(self, in_channels, kernel_size,dilation=1, dropout_rate=0.5):
         super(AdvancedConvBlock, self).__init__()
 
         # use it instead stride.
@@ -147,21 +153,31 @@ class AdvancedConvBlock(nn.Module):
                                       dilation = dilation,
                                       bias=True,
                                       padding='same')
+        self.batch_norm_dilated = nn.BatchNorm1d(in_channels)
+        # self.conv1_1 = nn.Conv1d(in_channels, in_channels,
+        #                          kernel_size=kernel_size,
+        #                          bias=True,
+        #                          padding='same')
 
-        self.conv1_1 = nn.Conv1d(in_channels, in_channels,
-                                 kernel_size=kernel_size,
-                                 bias=True,
-                                 padding='same')
+        # self.conv1_2 = nn.Conv1d(in_channels, in_channels,
+        #                          kernel_size=kernel_size,
+        #                          bias=True,
+        #                          padding='same')
 
-        self.conv1_2 = nn.Conv1d(in_channels, in_channels,
-                                 kernel_size=kernel_size,
-                                 bias=True,
-                                 padding='same')
+        # self.conv_dilated = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size, dilation=dilation)
+        self.conv1_1 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
+        self.batch_norm1_1 = nn.BatchNorm1d(in_channels)
+        self.conv1_2 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
+        self.batch_norm1_2 = nn.BatchNorm1d(in_channels)
+       
+
+
 
         self.conv_final = nn.Conv1d(in_channels, in_channels,
                                     kernel_size=1,
                                     bias=True,
                                     padding='same')
+        self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, x_input):
         """
@@ -173,19 +189,24 @@ class AdvancedConvBlock(nn.Module):
         - input + res
         """
         x = self.conv_dilated(x_input)
+        x = self.batch_norm_dilated(x)
 
         flow = torch.tanh(self.conv1_1(x))
+        flow = self.batch_norm1_1(flow)
         gate = torch.sigmoid(self.conv1_2(x))
+        gate = self.batch_norm1_2(gate)
+
         res = flow * gate
 
         res = self.conv_final(res)
-
+        res = self.dropout(res)
+        
         res = res + x_input
         return res
 
 class AdvancedEncoder(nn.Module):
     def __init__(self, n_blocks_per_layer=3, n_filters=64, kernel_size=3,
-                 dilation=1, strides = (2, 2, 2)):
+                 dilation=1, strides = (2, 2, 2), dropout_rate=0.5):
         super(AdvancedEncoder, self).__init__()
 
         self.n_layers = len(strides)
@@ -195,7 +216,7 @@ class AdvancedEncoder(nn.Module):
         conv_layers = []
         for i in range(self.n_layers):
             blocks = nn.ModuleList([AdvancedConvBlock(n_filters,kernel_size,
-                                                      dilation=dilation) for i in range(n_blocks_per_layer)])
+                                                      dilation=dilation, dropout_rate=dropout_rate) for i in range(n_blocks_per_layer)])
             
             layer = nn.Sequential(*blocks)
             conv_layers.append(layer)
@@ -220,7 +241,7 @@ class AdvancedEncoder(nn.Module):
 
 class AdvancedDecoder(nn.Module):
     def __init__(self, n_blocks_per_layer=3, n_filters=64, kernel_size=3,
-                 dilation=1, strides = (2, 2, 2)):
+                 dilation=1, strides = (2, 2, 2), dropout_rate=0.5):
         super(AdvancedDecoder, self).__init__()
 
         self.n_layers = len(strides)
@@ -235,7 +256,7 @@ class AdvancedDecoder(nn.Module):
         for i in range(self.n_layers):
            
             reduce  = nn.Conv1d(n_filters*2, n_filters, kernel_size=kernel_size, padding='same')
-            conv_blocks = nn.ModuleList([AdvancedConvBlock(n_filters, kernel_size, dilation=dilation) for i in range(n_blocks_per_layer)])
+            conv_blocks = nn.ModuleList([AdvancedConvBlock(n_filters, kernel_size, dilation=dilation,dropout_rate=dropout_rate) for i in range(n_blocks_per_layer)])
             
             conv_blocks.insert(0, reduce)
             layer = nn.Sequential(*conv_blocks)
@@ -304,7 +325,7 @@ class HVATNetv3(nn.Module):
         # Change number of features to custom one
         self.spatial_reduce = nn.Conv1d(config.n_electrodes, config.n_filters, kernel_size=1, padding='same')
 
-        self.denoiser = nn.Sequential(*[SimpleResBlock(config.n_filters, config.kernel_size) for _ in range(config.n_res_blocks)])
+        self.denoiser = nn.Sequential(*[SimpleResBlock(config.n_filters, config.kernel_size, config.dropout_rate) for _ in range(config.n_res_blocks)])
 
         self.encoder = AdvancedEncoder(n_blocks_per_layer=config.n_blocks_per_layer,
                                        n_filters=config.n_filters, kernel_size=config.kernel_size,
@@ -317,13 +338,13 @@ class HVATNetv3(nn.Module):
 
         self.encoder_small = AdvancedEncoder(n_blocks_per_layer=config.n_blocks_per_layer,
                                              n_filters=config.n_filters, kernel_size=config.kernel_size,
-                                             dilation=config.dilation, strides=config.small_strides)
+                                             dilation=config.dilation, strides=config.small_strides,dropout_rate=config.dropout_rate)
 
         self.decoder_small = AdvancedDecoder(n_blocks_per_layer=config.n_blocks_per_layer,
                                              n_filters=config.n_filters, kernel_size=config.kernel_size,
-                                             dilation=config.dilation, strides=config.small_strides[::-1])
+                                             dilation=config.dilation, strides=config.small_strides[::-1],dropout_rate=config.dropout_rate)
 
-        # self.rnn = RNN(input_size=config.n_filters, hidden_size=config.n_filters, num_layers=5, output_size=config.n_filters)
+        # self.rnn = RNN(input_size=config.n_filters, hidden_size=config.n_filters, num_layers=5, output_size=config.n_filters, dropout_rate=config.dropout_rate)
         self.simple_pred_head = nn.Conv1d(config.n_filters, config.n_channels_out, kernel_size=1, padding='same')
 
         # Get number of parameters

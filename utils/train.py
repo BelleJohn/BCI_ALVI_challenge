@@ -79,7 +79,80 @@ def prepare_data_loaders(train_dataset, val_dataset, config):
     )
     return train_loader, val_loader
 
-def run_train_model(model, datasets, config, device='cuda'):
+# def run_train_model(model, datasets, config, device='cuda'):
+
+#     SAVE_FOLDER = Path('logs') / config.exp_name
+#     SAVE_FOLDER.mkdir(parents=True, exist_ok=True)
+
+#     train_dataset, val_dataset = datasets
+#     train_loader, val_loader = prepare_data_loaders(train_dataset, val_dataset, config)
+
+#     optimizer = torch.optim.AdamW(model.parameters(), 
+#                                   lr=config.learning_rate, 
+#                                   weight_decay=config.weight_decay)
+#     scheduler = init_lr_scheduler(config)
+    
+#     overall_step = 0
+#     best_val_loss = float('inf')
+
+#     # Move model to the specified device
+#     model.to(device)
+
+#     while True:
+#         for batch in train_loader:
+#             lr = scheduler(overall_step)
+#             for param_group in optimizer.param_groups:
+#                 param_group['lr'] = lr
+            
+#             optimizer.zero_grad(set_to_none=True)
+            
+#             inputs, labels = batch
+#             # Move data to the specified device
+#             inputs, labels = inputs.to(device), labels.to(device)
+#             loss, _ = model(inputs, labels)
+#             loss.backward()
+            
+#             if config.grad_clip:
+#                 torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
+#             optimizer.step()
+
+#             overall_step += 1
+#             # logger.info(f'train/loss: {loss.item()} - lr: {lr} -  step={overall_step}')
+#             print('*', end='')
+
+#             if (overall_step % config.eval_interval) == 0:
+#                 model.eval()
+#                 val_loss_list = []
+#                 for batch in val_loader:
+#                     inputs, labels = batch
+#                     # Move data to the specified device
+#                     inputs, labels = inputs.to(device), labels.to(device)
+#                     with torch.no_grad():
+#                         val_loss, _ = model(inputs, labels)
+#                     val_loss_list.append(val_loss)
+                
+#                 mean_val_loss = torch.stack(val_loss_list).mean()
+
+#                 print('\n')
+#                 print(f"overall_steps {overall_step}: {loss.item()}")
+#                 print(f"val loss: {mean_val_loss}")
+            
+#                 if mean_val_loss < best_val_loss:
+#                     best_val_loss = mean_val_loss
+#                     save_path = SAVE_FOLDER / f"step_{overall_step}_loss_{mean_val_loss:.4f}.safetensors"
+#                     save_model(model, save_path)
+#                     print('saved model: ', save_path.name)
+#                 print('\n')
+#                 model.train()
+            
+#             if overall_step > config.max_steps:
+#                 print('Complete training')
+#                 break
+
+
+import optuna
+
+def run_train_model(model, datasets, config, device='cuda', trial=None):
 
     SAVE_FOLDER = Path('logs') / config.exp_name
     SAVE_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -136,7 +209,13 @@ def run_train_model(model, datasets, config, device='cuda'):
                 print('\n')
                 print(f"overall_steps {overall_step}: {loss.item()}")
                 print(f"val loss: {mean_val_loss}")
-            
+                
+                # Optuna pruning
+                if trial is not None:
+                    trial.report(mean_val_loss.item(), overall_step)
+                    if trial.should_prune():
+                        raise optuna.exceptions.TrialPruned()
+                
                 if mean_val_loss < best_val_loss:
                     best_val_loss = mean_val_loss
                     save_path = SAVE_FOLDER / f"step_{overall_step}_loss_{mean_val_loss:.4f}.safetensors"
@@ -147,4 +226,4 @@ def run_train_model(model, datasets, config, device='cuda'):
             
             if overall_step > config.max_steps:
                 print('Complete training')
-                break
+                return best_val_loss.item()
