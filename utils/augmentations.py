@@ -48,7 +48,7 @@ class SpatialRotation(BaseWaveformTransform):
     as peak normalization.
     """
 
-    supports_multichannel = True
+    supports_multichannel = True 
 
     def __init__(self, min_angle, max_angle, p=0.5):
 
@@ -60,6 +60,7 @@ class SpatialRotation(BaseWaveformTransform):
         super().randomize_parameters(samples, sample_rate)
 
     def apply(self, samples, sample_rate):
+        # print('sample_shape_in_SpatialRotation',samples.shape) # (n_sensors, n_samples) (8, 256)
         result = make_electrode_shifting(samples,
                                          self.min_angle,
                                          self.max_angle)
@@ -67,6 +68,9 @@ class SpatialRotation(BaseWaveformTransform):
         return result
 
 class TimeMaskingMultichannel(BaseWaveformTransform):
+
+    supports_multichannel = True 
+
     def __init__(self, max_mask_time, p=0.5):
         super().__init__(p)
         self.max_mask_time = max_mask_time
@@ -79,6 +83,7 @@ class TimeMaskingMultichannel(BaseWaveformTransform):
         return samples
 
 class FrequencyMaskingMultichannel(BaseWaveformTransform):
+    supports_multichannel = True 
     def __init__(self, max_mask_freq, p=0.5):
         super().__init__(p)
         self.max_mask_freq = max_mask_freq
@@ -93,6 +98,7 @@ class FrequencyMaskingMultichannel(BaseWaveformTransform):
 import pywt
 
 class WaveletNoiseInjection(BaseWaveformTransform):
+    supports_multichannel = True 
     """
     Apply wavelet transform to the signal, add noise to the wavelet coefficients,
     and then reconstruct the signal using the inverse wavelet transform.
