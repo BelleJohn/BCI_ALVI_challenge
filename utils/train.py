@@ -219,6 +219,13 @@ def run_train_model(model, datasets, config, device='cuda', trial=None):
                 if mean_val_loss < best_val_loss:
                     best_val_loss = mean_val_loss
                     save_path = SAVE_FOLDER / f"step_{overall_step}_loss_{mean_val_loss:.4f}.safetensors"
+                    # please use torch.save(model.state_dict(), save_path) instead of save_model
+                    '''RuntimeError: Error while trying to find names to remove to save state dict, but found no suitable name to keep for
+                      saving amongst: {'rnn.rnn.weight_ih_l0'}. None is covering the entire storage.Refusing to save/load the model since 
+                      you could be storing much more memory than needed. Please refer to https://huggingface.co/docs/safetensors/torch_shared_tensors 
+                    for more information. Or open an issue.'''
+                    # torch.save(model.state_dict(), save_path)
+                    # this has issues with loading the model when I run RNN models:
                     save_model(model, save_path)
                     print('saved model: ', save_path.name)
                 print('\n')
