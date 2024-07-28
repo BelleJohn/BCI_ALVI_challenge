@@ -27,7 +27,7 @@ class Config(Serializable):
     dilation: int
     strides: List[int]
     small_strides: List[int]
-    dropout_rate: float = 0.5 
+    dropout_rate: float = 0.8 # 0.2754191136439675 # 0.5
 
 class TuneModule(nn.Module):
     def __init__(self, n_electrodes=8, temperature=5):
@@ -65,12 +65,12 @@ class TuneModule(nn.Module):
         return x
 
 class RNN(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size):
+    def __init__(self, input_size, hidden_size, num_layers, output_size,dropout_rate=0.5):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
-        self.rnn = nn.GRU(input_size, hidden_size, num_layers, batch_first=True)
+        self.rnn = nn.GRU(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout_rate)
         self.fc = nn.Linear(hidden_size, output_size)
 
         # get number of parameters
@@ -111,7 +111,7 @@ class SimpleResBlock(nn.Module):
         #                        kernel_size=kernel_size,
         #                        bias=True,
         #                        padding='same')
-        self.batch_norm1 = nn.BatchNorm1d(in_channels)  
+        # self.batch_norm1 = nn.BatchNorm1d(in_channels)  
         self.activation = nn.GELU()
         self.dropout = nn.Dropout(dropout_rate)
         self.conv2 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
@@ -119,17 +119,17 @@ class SimpleResBlock(nn.Module):
         #                        kernel_size=kernel_size,
         #                        bias=True,
         #                        padding='same')
-        self.batch_norm2 = nn.BatchNorm1d(in_channels)
+        # self.batch_norm2 = nn.BatchNorm1d(in_channels)
 
 
     def forward(self, x_input):
 
         x = self.conv1(x_input)
-        x = self.batch_norm1(x)
+        # x = self.batch_norm1(x)
         x = self.activation(x)
         x = self.dropout(x)
         x = self.conv2(x)
-        x = self.batch_norm2(x)
+        # x = self.batch_norm2(x)
 
         res = x + x_input
 
@@ -153,7 +153,7 @@ class AdvancedConvBlock(nn.Module):
                                       dilation = dilation,
                                       bias=True,
                                       padding='same')
-        self.batch_norm_dilated = nn.BatchNorm1d(in_channels)
+        # self.batch_norm_dilated = nn.BatchNorm1d(in_channels)
         # self.conv1_1 = nn.Conv1d(in_channels, in_channels,
         #                          kernel_size=kernel_size,
         #                          bias=True,
@@ -166,9 +166,9 @@ class AdvancedConvBlock(nn.Module):
 
         # self.conv_dilated = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size, dilation=dilation)
         self.conv1_1 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
-        self.batch_norm1_1 = nn.BatchNorm1d(in_channels)
+        # self.batch_norm1_1 = nn.BatchNorm1d(in_channels)
         self.conv1_2 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
-        self.batch_norm1_2 = nn.BatchNorm1d(in_channels)
+        # self.batch_norm1_2 = nn.BatchNorm1d(in_channels)
        
 
 
@@ -189,12 +189,12 @@ class AdvancedConvBlock(nn.Module):
         - input + res
         """
         x = self.conv_dilated(x_input)
-        x = self.batch_norm_dilated(x)
+        # x = self.batch_norm_dilated(x)
 
         flow = torch.tanh(self.conv1_1(x))
-        flow = self.batch_norm1_1(flow)
+        # flow = self.batch_norm1_1(flow)
         gate = torch.sigmoid(self.conv1_2(x))
-        gate = self.batch_norm1_2(gate)
+        # gate = self.batch_norm1_2(gate)
 
         res = flow * gate
 
@@ -205,6 +205,7 @@ class AdvancedConvBlock(nn.Module):
         return res
 
 class AdvancedEncoder(nn.Module):
+    '''add lstm layers'''
     def __init__(self, n_blocks_per_layer=3, n_filters=64, kernel_size=3,
                  dilation=1, strides = (2, 2, 2), dropout_rate=0.5):
         super(AdvancedEncoder, self).__init__()
@@ -214,14 +215,20 @@ class AdvancedEncoder(nn.Module):
                                                           kernel_size=stride, stride=stride) for stride in strides])
 
         conv_layers = []
+        lstm_layers = []
+
         for i in range(self.n_layers):
             blocks = nn.ModuleList([AdvancedConvBlock(n_filters,kernel_size,
                                                       dilation=dilation, dropout_rate=dropout_rate) for i in range(n_blocks_per_layer)])
             
             layer = nn.Sequential(*blocks)
             conv_layers.append(layer)
+
+            # lstm_layer = nn.LSTM(n_filters, n_filters, batch_first=True, bidirectional=True)
+            # lstm_layers.append(lstm_layer)
             
         self.conv_layers = nn.ModuleList(conv_layers)
+        # self.lstm_layers = nn.ModuleList(lstm_layers)
 
     def forward(self, x):
         """
@@ -238,6 +245,23 @@ class AdvancedEncoder(nn.Module):
         outputs.append(x)
 
         return outputs
+
+        # outputs =  []
+        # for conv_block, lstm, down in zip(self.conv_layers, self.lstm_layers, self.downsample_blocks) :
+
+        #     x_res = conv_block(x)
+        #     outputs.append(x_res)
+        #     x = down(x_res)
+
+        #     # Reshape x for LSTM: (batch_size, channels, seq_length) -> (batch_size, seq_length, channels)
+        #     x = x.permute(0, 2, 1)
+        #     x, _ = lstm(x)
+        #     # Reshape x back: (batch_size, seq_length, channels) -> (batch_size, channels, seq_length)
+        #     x = x.permute(0, 2, 1)
+
+        # return outputs, x
+
+
 
 class AdvancedDecoder(nn.Module):
     def __init__(self, n_blocks_per_layer=3, n_filters=64, kernel_size=3,
@@ -386,12 +410,16 @@ class HVATNetv3(nn.Module):
         # res = self.rnn(emg_features)
         # emg_features = res.permute(0, 2, 1)
 
+
         pred = self.simple_pred_head(emg_features)
 
         if targets is None:
             return pred
         
-        loss = F.l1_loss(pred, targets)
+        # loss = F.l1_loss(pred, targets)
+        loss = F.mse_loss(pred, targets)
+        # loss = F.smooth_l1_loss(pred, targets) # compared to the other losses, this one has the worset result. 
+
         return loss, pred
 
     def _to_quats_shape(self, x):
