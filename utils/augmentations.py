@@ -2,6 +2,7 @@
 import audiomentations as A
 from audiomentations.core.transforms_interface import BaseWaveformTransform
 import numpy as np
+import pywt
 
 def make_electrode_shifting(data, min_angle, max_angle):
     """
@@ -83,7 +84,9 @@ class TimeMaskingMultichannel(BaseWaveformTransform):
         return samples
 
 class FrequencyMaskingMultichannel(BaseWaveformTransform):
+
     supports_multichannel = True 
+
     def __init__(self, max_mask_freq, p=0.5):
         super().__init__(p)
         self.max_mask_freq = max_mask_freq
@@ -95,14 +98,13 @@ class FrequencyMaskingMultichannel(BaseWaveformTransform):
         samples[start_freq:start_freq + mask_freq, :] = 0
         return samples
 
-import pywt
-
 class WaveletNoiseInjection(BaseWaveformTransform):
-    supports_multichannel = True 
     """
     Apply wavelet transform to the signal, add noise to the wavelet coefficients,
     and then reconstruct the signal using the inverse wavelet transform.
     """
+
+    supports_multichannel = True 
 
     def __init__(self, noise_level=0.1, p=0.5):
         super().__init__(p)
@@ -121,6 +123,34 @@ class WaveletNoiseInjection(BaseWaveformTransform):
         return augmented_samples.astype(samples.dtype)
     
 
+from scipy.fftpack import fft, ifft
+    
+class FourierNoiseInjection(BaseWaveformTransform):
+    """
+    Apply Fourier transform to the signal, add noise to the frequency components,
+    and then reconstruct the signal using the inverse Fourier transform.
+    """
+
+    supports_multichannel = True 
+
+    def __init__(self, noise_level=0.1, p=0.5):
+        super().__init__(p)
+        self.noise_level = noise_level
+
+    def apply(self, samples, sample_rate):
+        # Apply Fourier transform
+        freq_components = fft(samples)
+        # Add Gaussian noise to the frequency components
+        noisy_freq_components = freq_components + np.random.normal(0, self.noise_level, freq_components.shape)
+        # Reconstruct the signal
+        augmented_samples = ifft(noisy_freq_components)
+        # Ensure the shape is consistent and take the real part
+        augmented_samples = np.real(augmented_samples)
+        if augmented_samples.shape != samples.shape:
+            augmented_samples = augmented_samples[:samples.shape[0], :samples.shape[1]]
+        return augmented_samples.astype(samples.dtype)
+    
+
 def get_default_transform(p=0.0):
     if p == 0:
         return None
@@ -130,6 +160,7 @@ def get_default_transform(p=0.0):
         SpatialRotation(min_angle=1, max_angle=10, p=p),
         # TimeMaskingMultichannel(max_mask_time=30, p=p),
         # FrequencyMaskingMultichannel(max_mask_freq=3, p=p),
-        # WaveletNoiseInjection(noise_level=0.1, p=p)
+        WaveletNoiseInjection(noise_level=0.1, p=p)
+        # FourierNoiseInjection(noise_level=0.1, p=p) # don't use this with WaveletNoiseInjection
     ])
     return transform
