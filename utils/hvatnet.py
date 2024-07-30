@@ -85,16 +85,16 @@ class RNN(nn.Module):
         out = self.fc(out)
         return out
     
-class DepthwiseSeparableConv(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding='same', bias=True):
-        super(DepthwiseSeparableConv, self).__init__()
-        self.depthwise = nn.Conv1d(in_channels, in_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=in_channels, bias=bias)
-        self.pointwise = nn.Conv1d(in_channels, out_channels, kernel_size=1, bias=bias)
+# class DepthwiseSeparableConv(nn.Module):
+#     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding='same', bias=True):
+#         super(DepthwiseSeparableConv, self).__init__()
+#         self.depthwise = nn.Conv1d(in_channels, in_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=in_channels, bias=bias)
+#         self.pointwise = nn.Conv1d(in_channels, out_channels, kernel_size=1, bias=bias)
     
-    def forward(self, x):
-        x = self.depthwise(x)
-        x = self.pointwise(x)
-        return x    
+#     def forward(self, x):
+#         x = self.depthwise(x)
+#         x = self.pointwise(x)
+#         return x    
 
 class SimpleResBlock(nn.Module):
     """
@@ -106,19 +106,23 @@ class SimpleResBlock(nn.Module):
     def __init__(self, in_channels, kernel_size, dropout_rate=0.5):
         super(SimpleResBlock, self).__init__()
 
-        self.conv1 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
-        # self.conv1 = nn.Conv1d(in_channels, in_channels,
-        #                        kernel_size=kernel_size,
-        #                        bias=True,
-        #                        padding='same')
+        # self.conv1 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
+        self.conv1 = nn.Conv1d(in_channels, in_channels,
+                               kernel_size=kernel_size,
+                               bias=True,
+                               padding='same')
+        
         # self.batch_norm1 = nn.BatchNorm1d(in_channels)  
+        
         self.activation = nn.GELU()
         self.dropout = nn.Dropout(dropout_rate)
-        self.conv2 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
-        # self.conv2 = nn.Conv1d(in_channels, in_channels,
-        #                        kernel_size=kernel_size,
-        #                        bias=True,
-        #                        padding='same')
+
+        # self.conv2 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
+        self.conv2 = nn.Conv1d(in_channels, in_channels,
+                               kernel_size=kernel_size,
+                               bias=True,
+                               padding='same')
+
         # self.batch_norm2 = nn.BatchNorm1d(in_channels)
 
 
@@ -154,20 +158,21 @@ class AdvancedConvBlock(nn.Module):
                                       bias=True,
                                       padding='same')
         # self.batch_norm_dilated = nn.BatchNorm1d(in_channels)
-        # self.conv1_1 = nn.Conv1d(in_channels, in_channels,
-        #                          kernel_size=kernel_size,
-        #                          bias=True,
-        #                          padding='same')
 
-        # self.conv1_2 = nn.Conv1d(in_channels, in_channels,
-        #                          kernel_size=kernel_size,
-        #                          bias=True,
-        #                          padding='same')
+        self.conv1_1 = nn.Conv1d(in_channels, in_channels,
+                                 kernel_size=kernel_size,
+                                 bias=True,
+                                 padding='same')
+
+        self.conv1_2 = nn.Conv1d(in_channels, in_channels,
+                                 kernel_size=kernel_size,
+                                 bias=True,
+                                 padding='same')
 
         # self.conv_dilated = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size, dilation=dilation)
-        self.conv1_1 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
+        # self.conv1_1 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
         # self.batch_norm1_1 = nn.BatchNorm1d(in_channels)
-        self.conv1_2 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
+        # self.conv1_2 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
         # self.batch_norm1_2 = nn.BatchNorm1d(in_channels)
        
 
@@ -423,6 +428,10 @@ class HVATNetv3(nn.Module):
         self.decoder_small = AdvancedDecoder(n_blocks_per_layer=config.n_blocks_per_layer,
                                              n_filters=config.n_filters, kernel_size=config.kernel_size,
                                              dilation=config.dilation, strides=config.small_strides[::-1],dropout_rate=config.dropout_rate)
+        
+
+        # Adding the dense layer
+        self.dense = nn.Linear(config.n_filters, config.n_filters)  # Dense layer
 
         # self.rnn = RNN(input_size=config.n_filters, hidden_size=config.n_filters, num_layers=5, output_size=config.n_filters, dropout_rate=config.dropout_rate)
         self.simple_pred_head = nn.Conv1d(config.n_filters, config.n_channels_out, kernel_size=1, padding='same')
@@ -476,8 +485,12 @@ class HVATNetv3(nn.Module):
         # x = self.output(x)
         # x = self.pred_activation(x)
 
+        # Adding dense layer in forward pass
+        emg_features = emg_features.permute(0, 2, 1)  # (batch, time, channels) -> (batch, channels, time)
+        emg_features = self.dense(emg_features)  # Apply the dense layer
+        emg_features = emg_features.permute(0, 2, 1)  # (batch, channels, time) -> (batch, time, channels)
 
-        # 3. RNN way 
+        # # 3. RNN way 
         # emg_features  = emg_features.permute(0, 2, 1) # size [batch, n_filters, time]
         # res = self.rnn(emg_features)
         # emg_features = res.permute(0, 2, 1)
