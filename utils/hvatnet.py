@@ -27,7 +27,7 @@ class Config(Serializable):
     dilation: int
     strides: List[int]
     small_strides: List[int]
-    dropout_rate: float = 0.8 # 0.2754191136439675 # 0.5
+    dropout_rate: float = 0.5 # 0.2754191136439675 # 0.5
 
 class TuneModule(nn.Module):
     def __init__(self, n_electrodes=8, temperature=5):
@@ -215,7 +215,6 @@ class AdvancedEncoder(nn.Module):
                                                           kernel_size=stride, stride=stride) for stride in strides])
 
         conv_layers = []
-        lstm_layers = []
 
         for i in range(self.n_layers):
             blocks = nn.ModuleList([AdvancedConvBlock(n_filters,kernel_size,
@@ -224,11 +223,31 @@ class AdvancedEncoder(nn.Module):
             layer = nn.Sequential(*blocks)
             conv_layers.append(layer)
 
-            # lstm_layer = nn.LSTM(n_filters, n_filters, batch_first=True, bidirectional=True)
-            # lstm_layers.append(lstm_layer)
             
         self.conv_layers = nn.ModuleList(conv_layers)
+
+        # # LSTM way ------------------------------------------------------
+
+        # self.n_layers = len(strides)
+        # self.downsample_blocks = nn.ModuleList([nn.Conv1d(n_filters, n_filters, 
+        #                                                   kernel_size=stride, stride=stride) for stride in strides])
+
+        # conv_layers = []
+        # lstm_layers = []
+        # for i in range(self.n_layers):
+        #     blocks = nn.ModuleList([AdvancedConvBlock(n_filters,kernel_size,
+        #                                               dilation=dilation, dropout_rate=dropout_rate) for i in range(n_blocks_per_layer)])
+            
+        #     layer = nn.Sequential(*blocks)
+        #     conv_layers.append(layer)
+
+        #     lstm_layer = nn.LSTM(n_filters, n_filters, batch_first=True, bidirectional=True)
+        #     lstm_layers.append(lstm_layer)
+            
+        # self.conv_layers = nn.ModuleList(conv_layers)
         # self.lstm_layers = nn.ModuleList(lstm_layers)
+
+
 
     def forward(self, x):
         """
@@ -246,6 +265,7 @@ class AdvancedEncoder(nn.Module):
 
         return outputs
 
+        # # LSTM way
         # outputs =  []
         # for conv_block, lstm, down in zip(self.conv_layers, self.lstm_layers, self.downsample_blocks) :
 
@@ -288,7 +308,28 @@ class AdvancedDecoder(nn.Module):
             conv_layers.append(layer)
         
         self.conv_layers = nn.ModuleList(conv_layers)
+
+        # # LSTM way ------------------------------------------------------
         
+        # self.n_layers = len(strides)
+        # self.upsample_blocks = nn.ModuleList([nn.ConvTranspose1d(n_filters, n_filters, 
+        #                                                          kernel_size=stride, stride=stride) for stride in strides])
+
+        # conv_layers = []
+        # lstm_layers = []
+        # for i in range(self.n_layers):
+        #     blocks = nn.ModuleList([AdvancedConvBlock(n_filters,kernel_size,
+        #                                               dilation=dilation, dropout_rate=dropout_rate) for i in range(n_blocks_per_layer)])
+        #     layer = nn.Sequential(*blocks)
+        #     conv_layers.append(layer)
+
+        #     lstm_layer = nn.LSTM(n_filters, n_filters, batch_first=True, bidirectional=True)
+        #     lstm_layers.append(lstm_layer)
+            
+        # self.conv_layers = nn.ModuleList(conv_layers)
+        # self.lstm_layers = nn.ModuleList(lstm_layers)
+
+
 
     def forward(self, skips):
         """
@@ -309,6 +350,21 @@ class AdvancedDecoder(nn.Module):
 
         return outputs
 
+
+        # # LSTM way
+        # for conv_block, lstm, up, encoder_output in zip(self.conv_layers, self.lstm_layers, self.upsample_blocks, encoder_outputs):
+        #     x = up(x)
+        #     x = x + encoder_output
+
+        #     # Reshape x for LSTM: (batch_size, channels, seq_length) -> (batch_size, seq_length, channels)
+        #     x = x.permute(0, 2, 1)
+        #     x, _ = lstm(x)
+        #     # Reshape x back: (batch_size, seq_length, channels) -> (batch_size, channels, seq_length)
+        #     x = x.permute(0, 2, 1)
+
+        #     x = conv_block(x)
+            
+        # return x
 
 class AttentionBlock(nn.Module):
     def __init__(self, in_channels):
@@ -394,6 +450,7 @@ class HVATNetv3(nn.Module):
         # extract features
         # TODO: add mapper and change encoder to return all features
         outputs = self.encoder(x)
+        # outputs, x = self.encoder(x)
         emg_features = outputs[-1] # 25 fps features
         
         # decode features
@@ -404,6 +461,21 @@ class HVATNetv3(nn.Module):
         outputs_small = self.encoder_small(emg_features)
         outputs_small[-1] = self.mapper(outputs_small[-1])
         emg_features = self.decoder_small(outputs_small)[-1]
+
+
+        # # 2.5 LSTM way
+        # # Encoder
+        # # encoder_outputs, x = self.encoder(x)
+        # outputs_small, x = self.encoder(emg_features)
+        # outputs_small[-1] = self.mapper(outputs_small[-1])
+        # # Decoder
+        # # x = self.decoder(x, encoder_outputs)
+        # emg_features = self.decoder_small(x, outputs_small)[-1]
+
+        # # Output
+        # x = self.output(x)
+        # x = self.pred_activation(x)
+
 
         # 3. RNN way 
         # emg_features  = emg_features.permute(0, 2, 1) # size [batch, n_filters, time]
