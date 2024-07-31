@@ -431,7 +431,7 @@ class HVATNetv3(nn.Module):
         
 
         # Adding the dense layer
-        self.dense = nn.Linear(config.n_filters, config.n_filters)  # Dense layer
+        # self.dense = nn.Linear(config.n_filters, config.n_filters)  # Dense layer
 
         # self.rnn = RNN(input_size=config.n_filters, hidden_size=config.n_filters, num_layers=5, output_size=config.n_filters, dropout_rate=config.dropout_rate)
         self.simple_pred_head = nn.Conv1d(config.n_filters, config.n_channels_out, kernel_size=1, padding='same')
@@ -472,7 +472,7 @@ class HVATNetv3(nn.Module):
         emg_features = self.decoder_small(outputs_small)[-1]
 
 
-        # # 2.5 LSTM way
+        # # 2.5 LSTM way --------------------------------------------------------------------------------------
         # # Encoder
         # # encoder_outputs, x = self.encoder(x)
         # outputs_small, x = self.encoder(emg_features)
@@ -485,12 +485,12 @@ class HVATNetv3(nn.Module):
         # x = self.output(x)
         # x = self.pred_activation(x)
 
-        # Adding dense layer in forward pass
-        emg_features = emg_features.permute(0, 2, 1)  # (batch, time, channels) -> (batch, channels, time)
-        emg_features = self.dense(emg_features)  # Apply the dense layer
-        emg_features = emg_features.permute(0, 2, 1)  # (batch, channels, time) -> (batch, time, channels)
+        # Adding dense layer in forward pass---------------------------------------------------------------
+        # emg_features = emg_features.permute(0, 2, 1)  # (batch, time, channels) -> (batch, channels, time)
+        # emg_features = self.dense(emg_features)  # Apply the dense layer
+        # emg_features = emg_features.permute(0, 2, 1)  # (batch, channels, time) -> (batch, time, channels)
 
-        # # 3. RNN way 
+        # # 3. RNN way --------------------------------------------------------------------------------------
         # emg_features  = emg_features.permute(0, 2, 1) # size [batch, n_filters, time]
         # res = self.rnn(emg_features)
         # emg_features = res.permute(0, 2, 1)
