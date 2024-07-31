@@ -150,9 +150,28 @@ def prepare_data_loaders(train_dataset, val_dataset, config):
 #                 break
 
 
+import numpy as np
+
+# def moving_average(data, window_size=5):
+#     """Apply moving average smoothing to the data."""
+#     return np.convolve(data, np.ones(window_size)/window_size, mode='same')
+
+
+# from scipy.signal import savgol_filter
+
+# def savitzky_golay_filter(data, window_size=5, poly_order=2):
+#     """Apply Savitzky-Golay filtering to the data."""
+#     return savgol_filter(data, window_size, poly_order)
+
+# from scipy.ndimage import gaussian_filter1d
+
+# def gaussian_smoothing(data, sigma):
+#     """Apply Gaussian smoothing to the data."""
+#     return gaussian_filter1d(data, sigma)
+
 import optuna
 
-def run_train_model(model, datasets, config, device='cuda', trial=None):
+def run_train_model(model, datasets, config, device='cuda', trial=None, post_process=None):
 
     SAVE_FOLDER = Path('logs') / config.exp_name
     SAVE_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -201,7 +220,15 @@ def run_train_model(model, datasets, config, device='cuda', trial=None):
                     # Move data to the specified device
                     inputs, labels = inputs.to(device), labels.to(device)
                     with torch.no_grad():
-                        val_loss, _ = model(inputs, labels)
+                        # val_loss, _ = model(inputs, labels)
+                        val_loss, predictions = model(inputs, labels)
+
+                        # Apply post-processing if specified
+                        if post_process:
+                            # print('post_process', post_process)
+                            predictions = post_process(predictions.cpu().numpy())
+                            predictions = torch.tensor(predictions).to(device)
+
                     val_loss_list.append(val_loss)
                 
                 mean_val_loss = torch.stack(val_loss_list).mean()
