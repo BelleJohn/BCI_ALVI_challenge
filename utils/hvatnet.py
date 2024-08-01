@@ -126,6 +126,14 @@ class SimpleResBlock(nn.Module):
         # self.batch_norm2 = nn.BatchNorm1d(in_channels)
 
 
+        ## transfer learning way ------------------------------------------------------
+        # self.conv1 = nn.Conv1d(in_channels, in_channels, kernel_size=kernel_size, padding='same')
+        # self.bn1 = nn.BatchNorm1d(in_channels)
+        # self.activation = nn.GELU()
+        # self.dropout = nn.Dropout(dropout_rate)
+        # self.conv2 = nn.Conv1d(in_channels, in_channels, kernel_size=kernel_size, padding='same')
+        # self.bn2 = nn.BatchNorm1d(in_channels)
+
     def forward(self, x_input):
 
         x = self.conv1(x_input)
@@ -138,6 +146,16 @@ class SimpleResBlock(nn.Module):
         res = x + x_input
 
         return res
+
+    ## transfer learning way ------------------------------------------------------
+        # x = self.conv1(x_input)
+        # x = self.bn1(x)
+        # x = self.activation(x)
+        # x = self.dropout(x)
+        # x = self.conv2(x)
+        # x = self.bn2(x)
+        # res = x + x_input
+        # return res
 
 class AdvancedConvBlock(nn.Module):
     """
@@ -175,14 +193,23 @@ class AdvancedConvBlock(nn.Module):
         # self.conv1_2 = DepthwiseSeparableConv(in_channels, in_channels, kernel_size=kernel_size)
         # self.batch_norm1_2 = nn.BatchNorm1d(in_channels)
        
-
-
-
         self.conv_final = nn.Conv1d(in_channels, in_channels,
                                     kernel_size=1,
                                     bias=True,
                                     padding='same')
         self.dropout = nn.Dropout(dropout_rate)
+
+
+        ## transfer learning way ------------------------------------------------------
+        # self.conv_dilated = nn.Conv1d(in_channels, in_channels, kernel_size=kernel_size, dilation=dilation, padding='same')
+        # self.bn_dilated = nn.BatchNorm1d(in_channels)
+        # self.conv1_1 = nn.Conv1d(in_channels, in_channels, kernel_size=kernel_size, padding='same')
+        # self.bn1_1 = nn.BatchNorm1d(in_channels)
+        # self.conv1_2 = nn.Conv1d(in_channels, in_channels, kernel_size=kernel_size, padding='same')
+        # self.bn1_2 = nn.BatchNorm1d(in_channels)
+        # self.conv_final = nn.Conv1d(in_channels, in_channels, kernel_size=1, padding='same')
+        # self.bn_final = nn.BatchNorm1d(in_channels)
+        # self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, x_input):
         """
@@ -208,6 +235,20 @@ class AdvancedConvBlock(nn.Module):
         
         res = res + x_input
         return res
+    
+    ## transfer learning way ------------------------------------------------------
+        # x = self.conv_dilated(x_input)
+        # x = self.bn_dilated(x)
+        # flow = torch.tanh(self.conv1_1(x))
+        # flow = self.bn1_1(flow)
+        # gate = torch.sigmoid(self.conv1_2(x))
+        # gate = self.bn1_2(gate)
+        # res = flow * gate
+        # res = self.conv_final(res)
+        # res = self.bn_final(res)
+        # res = self.dropout(res)
+        # res = res + x_input
+        # return res
 
 class AdvancedEncoder(nn.Module):
     '''add lstm layers'''
@@ -236,16 +277,17 @@ class AdvancedEncoder(nn.Module):
         # # Load a pre-trained ResNet model
         # resnet = models.resnet18(pretrained=True)
         # self.resnet_layers = list(resnet.children())[:-2]  # Remove the fully connected layer and the average pooling layer
-        
+    
         # # Replace the first convolutional layer to match the number of input channels
         # self.resnet_layers[0] = nn.Conv2d(1, n_filters, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        # self.resnet_bn = nn.BatchNorm2d(n_filters)
         
         # # Convert the ResNet layers into a sequential model
         # self.resnet = nn.Sequential(*self.resnet_layers)
         
         # self.conv_layers = nn.ModuleList([AdvancedConvBlock(n_filters, kernel_size, dilation=dilation, dropout_rate=dropout_rate) for _ in range(n_blocks_per_layer)])
         # self.downsample_blocks = nn.ModuleList([nn.Conv1d(n_filters, n_filters, kernel_size=stride, stride=stride) for stride in strides])
-         
+
      
 
         # # LSTM way ------------------------------------------------------
@@ -288,9 +330,13 @@ class AdvancedEncoder(nn.Module):
         return outputs
     
         ## Transfer learning way ------------------------------------------------------
+        # print('x:', x.shape)
         # x = x.unsqueeze(1)  # Add a channel dimension
+        # print('x:', x.shape)
         # x = self.resnet(x)
-        # # x = rearrange(x, 'b c h w -> b c (h w)')  # Convert to 1D
+        # print('x:', x.shape)
+        # x = self.resnet_bn(x)
+        # print('x:', x.shape)
         # x = x.squeeze(2)  # Remove the height dimension
         # outputs = []
         # for conv_block, down in zip(self.conv_layers, self.downsample_blocks):
@@ -298,7 +344,7 @@ class AdvancedEncoder(nn.Module):
         #     x = down(x_res)
         #     outputs.append(x_res)
         # outputs.append(x)
-        # return outputs        
+        # return outputs  
 
         # # LSTM way
         # outputs =  []
@@ -325,11 +371,9 @@ class AdvancedDecoder(nn.Module):
 
         self.n_layers = len(strides)
 
-
         self.upsample_blocks = nn.ModuleList([nn.Upsample(scale_factor=scale,
                                                           mode='linear',
                                                           align_corners=False) for scale in strides])
-
 
         conv_layers = []
         for i in range(self.n_layers):
@@ -346,10 +390,9 @@ class AdvancedDecoder(nn.Module):
 
         # # Transfer learning way ------------------------------------------------------
         # self.n_layers = len(strides)
-        # self.upsample_blocks = nn.ModuleList([nn.Upsample(scale_factor=scale,
-        #                                                   mode='linear',
-        #                                                   align_corners=False) for scale in strides])
+        # self.upsample_blocks = nn.ModuleList([nn.Upsample(scale_factor=scale, mode='linear', align_corners=False) for scale in strides])
         # self.conv_layers = nn.ModuleList()
+        
         # for i in range(self.n_layers):
         #     reduce = nn.Conv1d(n_filters * 2, n_filters, kernel_size=kernel_size, padding='same')
         #     conv_blocks = nn.ModuleList([AdvancedConvBlock(n_filters, kernel_size, dilation=dilation, dropout_rate=dropout_rate) for _ in range(n_blocks_per_layer)])
@@ -387,16 +430,12 @@ class AdvancedDecoder(nn.Module):
         """
         skips = skips[::-1]
         x = skips[0]
-
-        outputs =  []
-        for idx, (conv_block, up) in enumerate(zip(self.conv_layers, self.upsample_blocks)) :
+        outputs = []
+        for idx, (conv_block, up) in enumerate(zip(self.conv_layers, self.upsample_blocks)):
             x = up(x)
-
-            x = torch.cat([x, skips[idx+1]], 1)
+            x = torch.cat([x, skips[idx + 1]], 1)
             x = conv_block(x)
-
             outputs.append(x)
-
         return outputs
 
 
@@ -492,13 +531,13 @@ class HVATNetv3(nn.Module):
         # self.n_channels_out = config.n_channels_out
         # self.model_depth = len(config.strides)
         # self.tune_module = TuneModule(n_electrodes=config.n_electrodes, temperature=5.0)
-        # self.spatial_reduce = nn.Conv1d(config.n_electrodes, config.n_filters, kernel_size=1, padding='same')
-        # self.denoiser = nn.Conv1d(config.n_filters, config.n_filters, kernel_size=1, padding='same')
+        # self.spatial_reduce = nn.Conv1d(config.n_electrodes, 1, kernel_size=1, padding='same')
+        # self.denoiser = SimpleResBlock(in_channels=1, kernel_size=config.kernel_size)
         # self.encoder = AdvancedEncoder(
-        #     n_blocks_per_layer=config.n_blocks_per_layer, 
-        #     n_filters=config.n_filters, 
-        #     kernel_size=config.kernel_size, 
-        #     dilation=config.dilation, 
+        #     n_blocks_per_layer=config.n_blocks_per_layer,
+        #     n_filters=config.n_filters,
+        #     kernel_size=config.kernel_size,
+        #     dilation=config.dilation,
         #     strides=config.strides,
         #     dropout_rate=config.dropout_rate
         # )
@@ -516,6 +555,7 @@ class HVATNetv3(nn.Module):
         # self.attention_layer = AttentionBlock(in_channels=config.n_filters)
         # self.output_layer = nn.Linear(config.n_filters, config.n_channels_out)
         # self.layer_norm = nn.LayerNorm(config.n_filters, elementwise_affine=True, eps=1e-5)
+        
         
 
     def forward(self, x, targets=None):
@@ -550,18 +590,16 @@ class HVATNetv3(nn.Module):
 
         ## Transfer learning way ------------------------------------------------------
         # x = self.tune_module(x)
-        # print(x.shape)
         # x = self.spatial_reduce(x)
-        # print('x', x.shape)  
         # x = self.denoiser(x)
-        # print('denoiser', x.shape)
+        # print('x:', x.shape)
         # skips = self.encoder(x)
         # out = self.decoder(skips)
         # out = self.downreduce(out[-1])
         # for down, small in zip(self.downsample_blocks, self.small_layers):
         #     out = down(out)
         #     out = small(out)
-        # out = self.layer_norm(out)
+        # out = self.layer_norm(out.permute(0, 2, 1)).permute(0, 2, 1)
         # out = self.attention_layer(out)
         # out = torch.mean(out, dim=-1)
         # emg_features = self.output_layer(out)
