@@ -479,6 +479,47 @@ class AttentionBlock(nn.Module):
         out = self.gamma * out + x
         return out
 
+class ChannelAttention(nn.Module):
+    def __init__(self, in_channels, reduction_ratio=16):
+        super(ChannelAttention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        self.max_pool = nn.AdaptiveMaxPool1d(1)
+        self.fc1 = nn.Conv1d(in_channels, in_channels // reduction_ratio, kernel_size=1)
+        self.fc2 = nn.Conv1d(in_channels // reduction_ratio, in_channels, kernel_size=1)
+
+    def forward(self, x):
+        batch_size, C, T = x.size()
+        avg_out = self.fc2(F.relu(self.fc1(self.avg_pool(x).view(batch_size, C, -1))))
+        max_out = self.fc2(F.relu(self.fc1(self.max_pool(x).view(batch_size, C, -1))))
+        out = avg_out + max_out
+        return torch.sigmoid(out).expand_as(x) * x
+
+class SpatialAttention(nn.Module):
+    def __init__(self):
+        super(SpatialAttention, self).__init__()
+        self.conv1 = nn.Conv1d(2, 1, kernel_size=7, padding=3)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        concat = torch.cat([avg_out, max_out], dim=1)
+        out = self.conv1(concat)
+        return self.sigmoid(out) * x
+
+class CBAMBlock(nn.Module):
+    def __init__(self, in_channels, reduction_ratio=16):
+        super(CBAMBlock, self).__init__()
+        self.channel_attention = ChannelAttention(in_channels, reduction_ratio)
+        self.spatial_attention = SpatialAttention()
+
+    def forward(self, x):
+        x = self.channel_attention(x)
+        x = self.spatial_attention(x)
+        return x
+
+
+
 class SWPTLayer(nn.Module):
     def __init__(self, wavelet='db1', level=3):
         super(SWPTLayer, self).__init__()
@@ -548,8 +589,9 @@ class HVATNetv3(nn.Module):
         print('Number of parameters:', self.n_params)
 
         self.attention_block = AttentionBlock(config.n_filters)
+        self.cbam_block = CBAMBlock(config.n_filters)  # Use CBAM here
 
-        self.swpt = SWPTLayer(level=3)
+        # self.swpt = SWPTLayer(level=3)
 
 
         ## Transfer learning way ------------------------------------------------------
@@ -592,10 +634,11 @@ class HVATNetv3(nn.Module):
         """
         # tune inputs to model
         x = self.tune_module(x)
-        x = self.swpt(x)
+        # x = self.swpt(x)
         # denoising part
         x = self.spatial_reduce(x)
         x = self.denoiser(x)
+        #x = self.cbam_block(x)  # Apply CBAM after denoising
         x = self.attention_block(x)  # Apply attention after denoising
 
         # extract features
