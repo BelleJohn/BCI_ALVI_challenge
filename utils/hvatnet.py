@@ -6,7 +6,10 @@ from einops import rearrange
 from simple_parsing import Serializable
 from dataclasses import dataclass
 from typing import List, Tuple
-from torchvision import models
+# from torchvision import models
+import numpy as np
+import pywt
+
 """
 Model
 1. Input data: 200 fps 
@@ -476,7 +479,28 @@ class AttentionBlock(nn.Module):
         out = self.gamma * out + x
         return out
 
+class SWPTLayer(nn.Module):
+    def __init__(self, wavelet='db1', level=3):
+        super(SWPTLayer, self).__init__()
+        self.wavelet = wavelet
+        self.level = level
 
+    def forward(self, x):
+        # Assuming x is of shape (batch_size, n_channels, seq_len)
+        batch_size, n_channels, seq_len = x.size()
+        transformed = []
+        for i in range(batch_size):
+            transformed_batch = []
+            for j in range(n_channels):
+                # signal = x[i, j].cpu().numpy()
+                signal = x[i, j].detach().cpu().numpy()
+                swpt = pywt.WaveletPacket(data=signal, wavelet=self.wavelet, mode='symmetric', maxlevel=self.level)
+                nodes = swpt.get_level(self.level, order='natural')
+                coefficients = np.array([node.data for node in nodes]).flatten()
+                transformed_batch.append(coefficients)
+            transformed.append(np.stack(transformed_batch, axis=0))
+        transformed = np.stack(transformed, axis=0)
+        return torch.tensor(transformed, dtype=x.dtype, device=x.device)
 
 class HVATNetv3(nn.Module):
     config = Config
@@ -525,6 +549,8 @@ class HVATNetv3(nn.Module):
 
         self.attention_block = AttentionBlock(config.n_filters)
 
+        self.swpt = SWPTLayer(level=3)
+
 
         ## Transfer learning way ------------------------------------------------------
         # self.n_inp_features = config.n_electrodes
@@ -566,7 +592,7 @@ class HVATNetv3(nn.Module):
         """
         # tune inputs to model
         x = self.tune_module(x)
-
+        x = self.swpt(x)
         # denoising part
         x = self.spatial_reduce(x)
         x = self.denoiser(x)
