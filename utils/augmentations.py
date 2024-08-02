@@ -150,6 +150,47 @@ class FourierNoiseInjection(BaseWaveformTransform):
             augmented_samples = augmented_samples[:samples.shape[0], :samples.shape[1]]
         return augmented_samples.astype(samples.dtype)
     
+class SWPTTransform(BaseWaveformTransform):
+    """
+    Apply Smoothed Wavelet Packet Transform to the signal.
+    """
+
+    supports_multichannel = True 
+
+    def __init__(self, wavelet='db1', level=3, p=0.5):
+        super().__init__(p)
+        self.wavelet = wavelet
+        self.level = level
+
+    def apply(self, samples, sample_rate):
+        n_sensors, n_samples = samples.shape
+        transformed_samples = np.zeros_like(samples)
+        
+        for i in range(n_sensors):
+            # Perform wavelet packet transform
+            wp = pywt.WaveletPacket(data=samples[i], wavelet=self.wavelet, mode='symmetric', maxlevel=self.level)
+            nodes = wp.get_level(self.level, order='natural')
+            
+            # Collect all the coefficients
+            coeffs = np.concatenate([node.data for node in nodes])
+            
+            # Ensure coefficients have the same length as original data
+            if len(coeffs) != n_samples:
+                # Padding or truncating coefficients to match original length
+                if len(coeffs) > n_samples:
+                    coeffs = coeffs[:n_samples]
+                else:
+                    coeffs = np.pad(coeffs, (0, n_samples - len(coeffs)), mode='constant')
+            
+            # Reconstruct the signal using inverse wavelet packet transform
+            wp_reconstruct = pywt.WaveletPacket(data=None, wavelet=self.wavelet, mode='symmetric')
+            # Create the node structure based on the level and coefficients
+            for node in wp.get_level(self.level, order='natural'):
+                wp_reconstruct[node.path] = node.data
+            transformed_samples[i, :] = wp_reconstruct.reconstruct(update=True)
+        
+        return transformed_samples.astype(samples.dtype)
+    
 
 def get_default_transform(p=0.0):
     if p == 0:
@@ -160,7 +201,8 @@ def get_default_transform(p=0.0):
         SpatialRotation(min_angle=1, max_angle=10, p=p),
         # TimeMaskingMultichannel(max_mask_time=30, p=p),
         # FrequencyMaskingMultichannel(max_mask_freq=3, p=p),
-        WaveletNoiseInjection(noise_level=0.1, p=p)
-        # FourierNoiseInjection(noise_level=0.1, p=p) # don't use this with WaveletNoiseInjection
+        WaveletNoiseInjection(noise_level=0.1, p=p),
+        # SWPTTransform(wavelet='db1', level=2, p=p),
+        # FourierNoiseInjection(noise_level=0.1, p=p), # don't use this with WaveletNoiseInjection
     ])
     return transform
