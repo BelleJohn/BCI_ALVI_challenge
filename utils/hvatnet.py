@@ -254,7 +254,6 @@ class AdvancedConvBlock(nn.Module):
         # return res
 
 class AdvancedEncoder(nn.Module):
-    '''add lstm layers'''
     def __init__(self, n_blocks_per_layer=3, n_filters=64, kernel_size=3,
                  dilation=1, strides = (2, 2, 2), dropout_rate=0.5):
         super(AdvancedEncoder, self).__init__()
@@ -293,14 +292,17 @@ class AdvancedEncoder(nn.Module):
 
      
 
-        # # LSTM way ------------------------------------------------------
+        # # LSTM way 1 ------------------------------------------------------
 
         # self.n_layers = len(strides)
+
         # self.downsample_blocks = nn.ModuleList([nn.Conv1d(n_filters, n_filters, 
         #                                                   kernel_size=stride, stride=stride) for stride in strides])
 
+
         # conv_layers = []
         # lstm_layers = []
+        # lstm_layers2 = []
         # for i in range(self.n_layers):
         #     blocks = nn.ModuleList([AdvancedConvBlock(n_filters,kernel_size,
         #                                               dilation=dilation, dropout_rate=dropout_rate) for i in range(n_blocks_per_layer)])
@@ -308,13 +310,61 @@ class AdvancedEncoder(nn.Module):
         #     layer = nn.Sequential(*blocks)
         #     conv_layers.append(layer)
 
-        #     lstm_layer = nn.LSTM(n_filters, n_filters, batch_first=True, bidirectional=True)
+        #     # if strides ==(2, 2, 2):
+        #     #     if i == 0:
+        #     #         lstm_layer = nn.LSTM(n_filters* 2, n_filters, batch_first=True, bidirectional=True)
+        #     #     elif i == 1:
+        #     #         lstm_layer = nn.LSTM(n_filters, n_filters//2, batch_first=True, bidirectional=True)
+        #     #     else:
+        #     #         lstm_layer = nn.LSTM(n_filters//2, n_filters//4, batch_first=True, bidirectional=True)
+        #     # else:
+        #     #     if i == 0:
+        #     #         lstm_layer = nn.LSTM(n_filters//4, n_filters//8, batch_first=True, bidirectional=True)
+        #     #     elif i == 1:
+        #     #         lstm_layer = nn.LSTM(n_filters//8, n_filters//16, batch_first=True, bidirectional=True)
+        #     #     else:
+        #     #         lstm_layer = nn.LSTM(n_filters//16, n_filters, batch_first=True, bidirectional=True)
+
+        #     # lstm_layers.append(lstm_layer)
+
+        #     # # For inference
+        #     if strides ==(2, 2, 2):
+        #         if i == 0:
+        #             lstm_layer = nn.LSTM(n_filters* 30, n_filters*15, batch_first=True, bidirectional=True)
+        #         elif i == 1:
+        #             lstm_layer = nn.LSTM(n_filters* 15, 960, batch_first=True, bidirectional=True)
+        #         else:
+        #             lstm_layer = nn.LSTM(960, 480, batch_first=True, bidirectional=True)
+        #     else:
+        #         if i == 0:
+        #             lstm_layer = nn.LSTM(480, 240, batch_first=True, bidirectional=True)
+        #         elif i == 1:
+        #             lstm_layer = nn.LSTM(240, 120, batch_first=True, bidirectional=True)
+        #         else:
+        #             lstm_layer = nn.LSTM(120, n_filters, batch_first=True, bidirectional=True)
+
+        #     if strides ==(2, 2, 2):
+        #         if i == 0:
+        #             lstm_layer2 = nn.LSTM(1792, 896, batch_first=True, bidirectional=True)
+        #         elif i == 1:
+        #             lstm_layer2 = nn.LSTM(896, 448, batch_first=True, bidirectional=True)
+        #         else:
+        #             lstm_layer2 = nn.LSTM(448, 224, batch_first=True, bidirectional=True)
+        #     else:
+        #         if i == 0:
+        #             lstm_layer2 = nn.LSTM(224, 112, batch_first=True, bidirectional=True)
+        #         elif i == 1:
+        #             lstm_layer2 = nn.LSTM(112, 56, batch_first=True, bidirectional=True)
+        #         else:
+        #             lstm_layer2 = nn.LSTM(56, n_filters, batch_first=True, bidirectional=True)
+            
         #     lstm_layers.append(lstm_layer)
+        #     lstm_layers2.append(lstm_layer2)
             
         # self.conv_layers = nn.ModuleList(conv_layers)
         # self.lstm_layers = nn.ModuleList(lstm_layers)
-
-
+        # self.lstm_layers2 = nn.ModuleList(lstm_layers2)
+ 
 
     def forward(self, x):
         """
@@ -324,12 +374,15 @@ class AdvancedEncoder(nn.Module):
 
         outputs =  []
         for conv_block, down in zip(self.conv_layers, self.downsample_blocks) :
+            #print('x:', x.shape) # x: torch.Size([1, 128, 256])
             x_res = conv_block(x)
+            #print('x_res:', x_res.shape) # x_res: torch.Size([1, 128, 256]), x_res: torch.Size([1, 128, 128]), x_res: torch.Size([1, 128, 64])
             x = down(x_res)
+            #print('x:', x.shape) # x: torch.Size([1, 128, 128]) 
             outputs.append(x_res)
 
         outputs.append(x)
-
+        # print('last_output:', outputs[-1].shape) # last_output: torch.Size([1, 128, 32])
         return outputs
     
         ## Transfer learning way ------------------------------------------------------
@@ -349,21 +402,34 @@ class AdvancedEncoder(nn.Module):
         # outputs.append(x)
         # return outputs  
 
-        # # LSTM way
+        # LSTM way 1
         # outputs =  []
-        # for conv_block, lstm, down in zip(self.conv_layers, self.lstm_layers, self.downsample_blocks) :
 
+        # for conv_block, lstm, down, lstm2 in zip(self.conv_layers, self.lstm_layers, self.downsample_blocks, self.lstm_layers2) :
+        # # for conv_block, lstm, down in zip(self.conv_layers, self.lstm_layers, self.downsample_blocks) :
+        #     # print('x:', x.shape) # x: torch.Size([1, 128, 256])
+            
+        #     # For inference
+        #     if x.size(2) == 3840 or x.size(2) == 1920 or x.size(2) == 960 or x.size(2) == 480 or x.size(2) == 240 or x.size(2) == 120:
+        #         x, _ = lstm(x)
+        #     elif x.size(2) == 1792 or x.size(2) == 896 or x.size(2) == 448 or x.size(2) == 224 or x.size(2) == 112 or x.size(2) == 56:
+        #         x, _ = lstm2(x)
+        #     else:
+        #         print('Hi There') 
+            
+        #     # x, _ = lstm(x)
+        #     #print('x_lstm:', x.shape) # x_lstm: torch.Size([1, 128, 256])
         #     x_res = conv_block(x)
-        #     outputs.append(x_res)
+        #     #print('x_res:', x_res.shape) # x_res: torch.Size([1, 128, 256]), x_res: torch.Size([1, 128, 128]), x_res: torch.Size([1, 128, 64])
+        #     outputs.append(x_res) 
+
         #     x = down(x_res)
+        #     #print('down_x:', x.shape) # down_x: torch.Size([1, 128, 128])
 
-        #     # Reshape x for LSTM: (batch_size, channels, seq_length) -> (batch_size, seq_length, channels)
-        #     x = x.permute(0, 2, 1)
-        #     x, _ = lstm(x)
-        #     # Reshape x back: (batch_size, seq_length, channels) -> (batch_size, channels, seq_length)
-        #     x = x.permute(0, 2, 1)
 
-        # return outputs, x
+        # outputs.append(x)
+        # #print('last_output:', outputs[-1].shape)
+        # return outputs#, x
 
 
 
@@ -404,28 +470,7 @@ class AdvancedDecoder(nn.Module):
         #     self.conv_layers.append(layer)
 
 
-        # # LSTM way ------------------------------------------------------
-        
-        # self.n_layers = len(strides)
-        # self.upsample_blocks = nn.ModuleList([nn.ConvTranspose1d(n_filters, n_filters, 
-        #                                                          kernel_size=stride, stride=stride) for stride in strides])
-
-        # conv_layers = []
-        # lstm_layers = []
-        # for i in range(self.n_layers):
-        #     blocks = nn.ModuleList([AdvancedConvBlock(n_filters,kernel_size,
-        #                                               dilation=dilation, dropout_rate=dropout_rate) for i in range(n_blocks_per_layer)])
-        #     layer = nn.Sequential(*blocks)
-        #     conv_layers.append(layer)
-
-        #     lstm_layer = nn.LSTM(n_filters, n_filters, batch_first=True, bidirectional=True)
-        #     lstm_layers.append(lstm_layer)
-            
-        # self.conv_layers = nn.ModuleList(conv_layers)
-        # self.lstm_layers = nn.ModuleList(lstm_layers)
-
-
-
+    
     def forward(self, skips):
         """
         Apply conv + downamsple
@@ -433,29 +478,67 @@ class AdvancedDecoder(nn.Module):
         """
         skips = skips[::-1]
         x = skips[0]
+        #print('decode_x:', x.shape) #decode_x: torch.Size([1, 128, 8])
         outputs = []
         for idx, (conv_block, up) in enumerate(zip(self.conv_layers, self.upsample_blocks)):
             x = up(x)
+            #print('decode_up_x:', x.shape)  #decode_up_x: torch.Size([1, 128, 16]) decode_up_x: torch.Size([1, 128, 32])
             x = torch.cat([x, skips[idx + 1]], 1)
+            #print('decode_cat_x:', x.shape) 
             x = conv_block(x)
             outputs.append(x)
         return outputs
 
+    
+        # # LSTM way 2 ------------------------------------------------------
+        # # Check if the skips list has enough elements
+        # if len(skips) != self.n_layers + 1:
+        #     raise ValueError(f'Expected {self.n_layers + 1} skip connections, but got {len(skips)}')
 
-        # # LSTM way
-        # for conv_block, lstm, up, encoder_output in zip(self.conv_layers, self.lstm_layers, self.upsample_blocks, encoder_outputs):
-        #     x = up(x)
-        #     x = x + encoder_output
+        # skips = skips[::-1]  # Reverse skips for decoding
+        # x = skips[0]
+        # #print('decode_x:', x.shape) # torch.Size([1, 128, 256])
+        # outputs = []
 
-        #     # Reshape x for LSTM: (batch_size, channels, seq_length) -> (batch_size, seq_length, channels)
-        #     x = x.permute(0, 2, 1)
-        #     x, _ = lstm(x)
-        #     # Reshape x back: (batch_size, seq_length, channels) -> (batch_size, channels, seq_length)
-        #     x = x.permute(0, 2, 1)
+        # # for idx, (conv_block, up, lstm) in enumerate(zip(self.conv_layers, self.upsample_blocks, self.lstm_layers)):
+        # for idx, (conv_block, up) in enumerate(zip(self.conv_layers, self.upsample_blocks)):
+        #     print('decode_x:', x.shape) # 
+        #     x = up(x) #[256, 128, 2]
 
-        #     x = conv_block(x)
+
+        #     # Check if the current index is within bounds
+        #     if idx + 1 >= len(skips):
+        #         raise IndexError(f'Index {idx + 1} out of range for skip connections.')
+
+        #     skip_connection = skips[idx + 1]
+
+        #     # Ensure tensors have matching sequence length before concatenation
+        #     if x.size(2) != skip_connection.size(2):
+        #         # Resize skip connection to match sequence length of x
+        #         skip_connection = nn.functional.interpolate(skip_connection, size=x.size(2), mode='linear', align_corners=False)
             
-        # return x
+            
+        #     x = torch.cat([x, skip_connection], dim=1)  # Concatenate skip connections
+        #     #print('decode_cat_x:', x.shape) # torch.Size([1, 256, 512])
+        #     #x, _ = lstm(x)
+        #     #print('decode_lstm_x:', x.shape) # torch.Size([1, 256, 256]) decode_lstm_x: torch.Size([1, 256, 128])
+        #     #x = x.permute(0, 2, 1)
+        #     x = conv_block(x)
+        #     print('decode_conv_x:', x.shape) # torch.Size([1, 128, 256])
+        #     # decode_conv_x: torch.Size([1, 128, 512])
+        #     # decode_conv_x: torch.Size([1, 128, 1024])
+
+        #     # # Apply the final convolution to match the desired output channels
+        #     # x = self.final_conv(x)  # Output shape should be (batch_size, 128, seq_length)
+        #     # #print('decode_final_x:', x.shape) # torch.Size([1, 128, 256])
+        #     # # Ensure the final output sequence length is 32
+
+        #     # if x.size(2) != 32:
+        #     #     x = nn.functional.interpolate(x, size=32, mode='linear', align_corners=False)
+
+        #     outputs.append(x)
+
+        # return outputs
 
 class AttentionBlock(nn.Module):
     def __init__(self, in_channels):
@@ -583,13 +666,19 @@ class HVATNetv3(nn.Module):
 
         # self.rnn = RNN(input_size=config.n_filters, hidden_size=config.n_filters, num_layers=5, output_size=config.n_filters, dropout_rate=config.dropout_rate)
         self.simple_pred_head = nn.Conv1d(config.n_filters, config.n_channels_out, kernel_size=1, padding='same')
+        # self.lstms = nn.ModuleList([nn.LSTM(config.n_filters, config.n_filters, batch_first=True, bidirectional=True) for _ in range(config.n_layers)])
+        #self.lstms = nn.LSTM(config.n_filters*2, config.n_filters, batch_first=True, bidirectional=True)
+
+        # self.lstms = nn.LSTM(3840, 1920, batch_first=True, bidirectional=True)
+        # self.lstms2 = nn.LSTM(1792, 896, batch_first=True, bidirectional=True)
+
 
         # Get number of parameters
         self.n_params = sum(p.numel() for p in self.parameters())
         print('Number of parameters:', self.n_params)
 
         self.attention_block = AttentionBlock(config.n_filters)
-        self.cbam_block = CBAMBlock(config.n_filters)  # Use CBAM here
+        #self.cbam_block = CBAMBlock(config.n_filters)  # Use CBAM here
 
         # self.swpt = SWPTLayer(level=3)
 
@@ -639,23 +728,33 @@ class HVATNetv3(nn.Module):
         x = self.spatial_reduce(x)
         x = self.denoiser(x)
         #x = self.cbam_block(x)  # Apply CBAM after denoising
-        x = self.attention_block(x)  # Apply attention after denoising
+        # x = self.attention_block(x)  # Apply attention after denoising # torch.Size([1, 128, 256])
+        
+        # if x.size(2) == 3840:
+        #     x,_ = self.lstms(x) # Apply LSTM after denoising
+        # if x.size(2) == 1792:
+        #     x,_ = self.lstms2(x)
+
+        # x,_ = self.lstms(x)
 
         # extract features
-        # TODO: add mapper and change encoder to return all features
-        outputs = self.encoder(x)
+        ## TODO: add mapper and change encoder to return all features
+        outputs = self.encoder(x) # torch.Size([1, 128, 32])
+        ##print('outputs SHAPE', outputs[-1].shape) # torch.Size([1, 128, 32]) 
         # outputs, x = self.encoder(x)
-        emg_features = outputs[-1] # 25 fps features
-        
+        emg_features = outputs[-1] # 25 fps features # torch.Size([1, 128, 32])
+        ##print('EMG SHAPE', emg_features.shape) # EMG SHAPE torch.Size([1, 128, 32])
         # decode features
         # 1. simple way:  mapper + pred_head + quat conversion
         # emg_features = self.mapper(emg_features)
         
         # 2. Unet way:  encoder + mapper + decoder + quat conversion
-        outputs_small = self.encoder_small(emg_features)
-        outputs_small[-1] = self.mapper(outputs_small[-1])
-        emg_features = self.decoder_small(outputs_small)[-1]
-
+        outputs_small = self.encoder_small(emg_features) # torch.Size([1, 128, 32])
+        #print('outputs_small SHAPE', outputs_small[-1].shape) # outputs_small SHAPE torch.Size([1, 128, 32])
+        outputs_small[-1] = self.mapper(outputs_small[-1]) # torch.Size([1, 128, 32])
+        #print('outputs_small SHAPE', outputs_small[-1].shape) # outputs_small SHAPE torch.Size([1, 128, 32])
+        emg_features = self.decoder_small(outputs_small)[-1]# torch.Size([1, 128, 32])
+        #print('EMG SHAPE', emg_features.shape) 
 
         ## Transfer learning way ------------------------------------------------------
         # x = self.tune_module(x)
@@ -677,14 +776,20 @@ class HVATNetv3(nn.Module):
 
         # # 2.5 LSTM way --------------------------------------------------------------------------------------
         # # Encoder
-        # # encoder_outputs, x = self.encoder(x)
-        # outputs_small, x = self.encoder(emg_features)
+        # encoder_outputs, x = self.encoder(x)
+        # #print('x:', x.shape) # x: torch.Size([1, 128, 32]) x: torch.Size([1, 128, 256])
+        # emg_features = encoder_outputs[-1]
+        # #print('Encoder outputs:', emg_features.shape) # Encoder outputs: torch.Size([1, 128, 32])  torch.Size([1, 128, 256])
+        # outputs_small, x = self.encoder_small(emg_features)
+        # #print('outputs_small:', outputs_small[-1].shape) # outputs_small: torch.Size([1, 128, 256])
         # outputs_small[-1] = self.mapper(outputs_small[-1])
+        # #print('outputs_small:', outputs_small[-1].shape) # outputs_small: torch.Size([1, 128, 256])
         # # Decoder
-        # # x = self.decoder(x, encoder_outputs)
-        # emg_features = self.decoder_small(x, outputs_small)[-1]
+        # #x = self.decoder(x, encoder_outputs)
+        # emg_features = self.decoder_small(outputs_small)[-1]
+        # #print('EMG SHAPE', emg_features.shape)
 
-        # # Output
+        # Output
         # x = self.output(x)
         # x = self.pred_activation(x)
 
@@ -700,6 +805,7 @@ class HVATNetv3(nn.Module):
 
 
         pred = self.simple_pred_head(emg_features)
+        # print('Pred shape', pred.shape) #Pred shape torch.Size([1, 20, 32])
 
         if targets is None:
             return pred
