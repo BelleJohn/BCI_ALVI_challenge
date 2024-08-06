@@ -180,8 +180,11 @@ def run_train_model(model, datasets, config, device='cuda', trial=None, post_pro
     train_loader, val_loader = prepare_data_loaders(train_dataset, val_dataset, config)
 
     optimizer = torch.optim.AdamW(model.parameters(), 
+                                  betas=(0.9, 0.999),
                                   lr=config.learning_rate, 
-                                  weight_decay=config.weight_decay)
+                                  weight_decay=config.weight_decay,
+                                  foreach=True,
+                                  )
     scheduler = init_lr_scheduler(config)
     
     overall_step = 0
@@ -251,9 +254,9 @@ def run_train_model(model, datasets, config, device='cuda', trial=None, post_pro
                       saving amongst: {'rnn.rnn.weight_ih_l0'}. None is covering the entire storage.Refusing to save/load the model since 
                       you could be storing much more memory than needed. Please refer to https://huggingface.co/docs/safetensors/torch_shared_tensors 
                     for more information. Or open an issue.'''
-                    # torch.save(model.state_dict(), save_path)
+                    torch.save(model.state_dict(), save_path)
                     # this has issues with loading the model when I run RNN models:
-                    save_model(model, save_path)
+                    # save_model(model, save_path)
                     print('saved model: ', save_path.name)
                 print('\n')
                 model.train()
