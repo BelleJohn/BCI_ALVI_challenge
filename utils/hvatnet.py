@@ -541,6 +541,13 @@ class AdvancedDecoder(nn.Module):
         # return outputs
 
 class AttentionBlock(nn.Module):
+    '''
+    in_channels: Number of input channels (features).
+    self.query_conv: 1D convolutional layer to generate the query vectors, reducing the channel dimension to in_channels // 8.
+    self.key_conv: 1D convolutional layer to generate the key vectors, also reducing the channel dimension to in_channels // 8.
+    self.value_conv: 1D convolutional layer to generate the value vectors, keeping the same channel dimension as the input.
+    self.gamma: A learnable parameter initialized to zero, used for scaling the output.
+    '''
     def __init__(self, in_channels):
         super(AttentionBlock, self).__init__()
         self.query_conv = nn.Conv1d(in_channels, in_channels // 8, kernel_size=1)
@@ -554,9 +561,12 @@ class AttentionBlock(nn.Module):
         key = self.key_conv(x).view(batch_size, -1, T)
         value = self.value_conv(x).view(batch_size, -1, T)
         
-        attention = torch.bmm(query, key)
-        attention = F.softmax(attention, dim=-1)
-        out = torch.bmm(value, attention.permute(0, 2, 1))
+        attention_score = torch.bmm(query, key) # attention score/weights [batch, time(num_queries), time(num_keys)]
+        '''The resulting attention tensor contains the attention scores for each query-key pair 
+        in each batch. These scores are used to determine how much focus or weight each part of
+        the input should get relative to others.'''
+        attention = F.softmax(attention_score, dim=-1)
+        out = torch.bmm(value, attention.permute(0, 2, 1)) # [batch, channels(features), time]
         out = out.view(batch_size, C, T)
         
         out = self.gamma * out + x
