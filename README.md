@@ -1,6 +1,6 @@
 # 🧠 BCI ALVI Challenge – First Place Solution
 
-This repository documents my approach to winning **first place** in the [BCI Initiative & ALVI Labs - HCI Challenge](https://chatgpt.com/c/67cf1334-a324-8008-a1cb-7553372785b9).
+This repository documents my approach to winning **first place** in the [BCI Initiative & ALVI Labs - HCI Challenge](https://www.kaggle.com/competitions/bci-initiative-alvi-hci-challenge).
 
 ## 🏁 Original Approach
 
