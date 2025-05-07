@@ -1,6 +1,9 @@
+---
 The code demo is in the 01_load_dataset.ipynb.
 
 There are two ways to start explore data: one is to find a suitable method from the same domain of literature, and the other is to use traditional and simple methods. In the file, traditional methods are used, like mean, standard deviation, and so on.
+
+---
 
 ## Mean in EMG Signal Analysis can show:
 
@@ -32,6 +35,8 @@ There are two ways to start explore data: one is to find a suitable method from 
 
 In this challenge of mapping EMG signals to hand movements, the mean values provide insights into overall muscle engagement patterns that contribute to different hand gestures and positions.
 
+---
+
 ## Standard Deviation in EMG Signal Analysis can show:
 
 1. **Activity Intensity Measurement**
@@ -62,6 +67,8 @@ In this challenge of mapping EMG signals to hand movements, the mean values prov
 6. **Subject Differences**
    - Comparing standard deviations between healthy and amputant subjects reveals differences in motor control strategies
    - Individual variations in standard deviation patterns may require personalized model calibration
+
+---
 
 ## Maximum and Minimum in EMG Signal Analysis can show:
 
@@ -112,6 +119,8 @@ In this challenge of mapping EMG signals to hand movements, the mean values prov
 
 Note: In experiments, I usually superimpose the signals obtained from the same subject, the same action, and the same electrode and use plots to show their maximum and minimum values. Sometimes abnormal signals are discovered and the data is removed. 
 
+---
+
 ## EMG Electrode Statistics Boxplots in EMG Signal Analysis can show:
 
 ### Distribution of Mean EMG Values (left plot):
@@ -134,6 +143,8 @@ Note: In experiments, I usually superimpose the signals obtained from the same s
 
 4. **Processing Implications**: Electrodes with higher standard deviations likely contain more information about changing muscle states, making them potentially more valuable for predicting hand movements.
 
+---
+
 ## Multiple Electrodes Plots in EMG Signal Analysis can show:
 
 The image shows 8 EMG (electromyography) signal plots from different electrodes placed around the arm, representing the electrical activity of muscles during movement. Several key observations:
@@ -154,6 +165,8 @@ These EMG signals form the input data for the hand movement prediction model. Th
 1. Which muscles are activating
 2. How strongly they're contracting
 3. The timing sequences of muscle activation
+
+---
 
 ## Joint Angle Visualizations in EMG Signal Analysis can show:
 
@@ -180,6 +193,8 @@ These EMG signals form the input data for the hand movement prediction model. Th
 4. **Varying Activity Levels**: Joints in the top row show broader distributions, suggesting they participate in more diverse movements, while some in the bottom row show more concentrated distributions, indicating more specialized use.
 
 5. **Correlation Potential**: Similar distribution patterns between certain joints might indicate coordinated movement groups that tend to move together.
+
+---
 
 ## PCA Visualization in EMG Signal Analysis can show:
 (This is suggested by Claude, the AI tool.)
