@@ -68,6 +68,18 @@ class SpatialRotation(BaseWaveformTransform):
         result = result.astype(samples.dtype)
         return result
 
+def get_default_transform(p=0.0):
+    if p == 0:
+        return None
+    
+    transform = A.Compose([
+        A.AddGaussianNoise(min_amplitude=0.01, max_amplitude=0.1, p=p),
+        SpatialRotation(min_angle=1, max_angle=10, p=p),
+    ])
+    return transform
+
+# --- Start of Yun's Code ---
+
 class TimeMaskingMultichannel(BaseWaveformTransform):
 
     supports_multichannel = True 
@@ -192,7 +204,7 @@ class SWPTTransform(BaseWaveformTransform):
         return transformed_samples.astype(samples.dtype)
     
 
-def get_default_transform(p=0.0):
+def get_custom_transform(p=0.0):
     if p == 0:
         return None
     
@@ -206,3 +218,4 @@ def get_default_transform(p=0.0):
         # FourierNoiseInjection(noise_level=0.1, p=p), # don't use this with WaveletNoiseInjection
     ])
     return transform
+# --- End of Yun's Code ---

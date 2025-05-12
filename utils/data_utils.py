@@ -836,12 +836,14 @@ class VRHandMYODataset(Dataset):
             return myo, target, support_info
         else:
             return myo, target
-        
+
+# --- Start of Yun's Code ---        
 # def moving_average(data, window_size):
 #     """Compute the moving average of the data."""
 #     cumsum = np.cumsum(data, axis=-1)
 #     cumsum[window_size:] = cumsum[window_size:] - cumsum[:-window_size]
 #     return cumsum[window_size - 1:] / window_size
+# # --- End of Yun's Code ---
 
 ## Function for data processings.
 def process_emg(emg, moving_avg_window_size=3):
