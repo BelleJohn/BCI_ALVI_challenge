@@ -98,7 +98,8 @@ def run_train_model(model, datasets, config, device='cuda'):
     # Move model to the specified device
     model.to(device)
 
-    while True:
+    done_training = False
+    while not done_training:
         for batch in train_loader:
             lr = scheduler(overall_step)
             for param_group in optimizer.param_groups:
@@ -147,4 +148,10 @@ def run_train_model(model, datasets, config, device='cuda'):
             
             if overall_step > config.max_steps:
                 print('Complete training')
-                break
+                done_training = True
+                break  # Break out of for loop
+    
+        if done_training:
+            break  # Break out of while loop
+
+    return best_val_loss
