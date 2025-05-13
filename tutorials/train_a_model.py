@@ -1,3 +1,12 @@
+"""
+This script is used to train both the baseline model and the modified models on the dataset, with each run 
+focusing on a single change—for example, preprocessing, neural network modifications, or postprocessing.
+It is essentially the same as the 02_train_baseline.ipynb notebook, except it can be run directly from 
+the terminal, without needing to execute one cell at a time. If a particular modification leads to better 
+training results, I will use Optuna to tune the hyperparameters in order to obtain the optimized model (see 
+train_optuna.py).
+"""
+
 import os
 import sys
 sys.path.insert(1, os.path.realpath(os.path.pardir))
@@ -13,18 +22,18 @@ from utils import creating_dataset
 # this is the implementation of the custom baseline model
 from utils import hvatnet
 
+import config
+
 train_config = TrainConfig(exp_name='test_2_run_fedya', p_augs=0.3, batch_size=64, eval_interval=150, num_workers=0)
 
 # DATA_PATH = r"F:\Dropbox (Personal)\BCII\BCI Challenges\2024 ALVI EMG Decoding\dataset_v2_blocks\dataset_v2_blocks"
-DATA_PATH = "/media/lutetia/Extreme SSD/EMG_Yun/bci-initiative-alvi-hci-challenge/dataset_v2_blocks/dataset_v2_blocks"
+DATA_PATH = config.DATA_PATH
 
 def count_parameters(model): 
     n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     n_total = sum(p.numel() for p in model.parameters())
     print(f"Total: {n_total/1e6:.2f}M, Trainable: {n_trainable/1e6:.2f}M")
     return n_total, n_trainable
-
-
     
 ## Data preparation
 transform = get_default_transform(train_config.p_augs)
