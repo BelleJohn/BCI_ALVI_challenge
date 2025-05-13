@@ -5,6 +5,15 @@ It is essentially the same as the 02_train_baseline.ipynb notebook, except it ca
 the terminal, without needing to execute one cell at a time. If a particular modification leads to better 
 training results, I will use Optuna to tune the hyperparameters in order to obtain the optimized model (see 
 train_optuna.py).
+
+Note: 
+- To activate the virtual environment in Windows, use the following command in the terminal:
+.venv\Scripts\Activate.ps1
+or
+.\venv\Scripts\activate
+
+- The command to run this script in the terminal is:
+python train_a_model.py
 """
 
 import os
@@ -22,19 +31,37 @@ from utils import creating_dataset
 # this is the implementation of the custom baseline model
 from utils import hvatnet
 
-import config
+import toml
+toml_file = toml.load("../config.toml")
 
+# Define configuration
 train_config = TrainConfig(exp_name='test_2_run_fedya', p_augs=0.3, batch_size=64, eval_interval=150, num_workers=0)
 
-# DATA_PATH = r"F:\Dropbox (Personal)\BCII\BCI Challenges\2024 ALVI EMG Decoding\dataset_v2_blocks\dataset_v2_blocks"
-DATA_PATH = config.DATA_PATH
+DATA_PATH = toml_file['paths']['DATA_PATH']
 
 def count_parameters(model): 
     n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     n_total = sum(p.numel() for p in model.parameters())
     print(f"Total: {n_total/1e6:.2f}M, Trainable: {n_trainable/1e6:.2f}M")
     return n_total, n_trainable
-    
+
+# Initialize Weights & Biases
+wandb.init(
+    entity=toml_file['wandb']['entity'], # Entity name
+    project="BCI_ALVI_challenge",  # Project name
+    name=train_config.exp_name,    # Run name
+    config={
+        "model": "HVATNetv3_baseline",
+        "learning_rate": train_config.learning_rate,
+        "batch_size": train_config.batch_size,
+        "max_steps": train_config.max_steps,
+        "augmentation_prob": train_config.p_augs,
+        "weight_decay": train_config.weight_decay,
+        "grad_clip": train_config.grad_clip,
+        "num_workers": train_config.num_workers,
+    }
+)
+
 ## Data preparation
 transform = get_default_transform(train_config.p_augs)
 data_paths = dict(datasets=[DATA_PATH],
@@ -50,17 +77,11 @@ model_config = hvatnet.Config(n_electrodes=8, n_channels_out=20,
                             strides=(2, 2, 2), dilation=2, 
                             small_strides = (2, 2))
 model = hvatnet.HVATNetv3(model_config)
-count_parameters(model)
-
-X, Y = train_dataset[0]
-print(f"X shape: {X.shape}, Y shape: {Y.shape}")
-
-Y_hat = model(torch.tensor(X).unsqueeze(0)).squeeze().detach().numpy()
-
-print(f"Predictions shape: {Y_hat.shape}")
-
-assert Y.shape == Y_hat.shape, "Predictions have the wrong shape!"
+total_params, trainable_params = count_parameters(model)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Using device: {device}")
 
-run_train_model(model, (train_dataset, test_dataset), train_config, device)
+best_val_loss = run_train_model(model, (train_dataset, test_dataset), train_config, device)
+wandb.log({"best_val_loss": best_val_loss})
+wandb.finish()
