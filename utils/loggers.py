@@ -20,19 +20,15 @@ class BasicLogger:
     def run(self):
         train_dataset, val_dataset = self.datasets
         
-        # Create a hook for monitoring training loss
+        # Create a hook for monitoring training loss (might change this method)
         def forward_hook(module, input, output):
-            loss = output[0].item()  # Assuming the first output is loss
+            loss = output[0].item()  # See def forward() in hvatnet.py to know the item. Here is loss(0) and pred(1)
+
+            #output is loss
             wandb.log({
                 "train_loss": loss,
-                "lr": self.current_lr,
-                "step": self.current_step
             })
             return output
-        
-        # Store the current step and learning rate
-        self.current_step = 0
-        self.current_lr = self.config.learning_rate
         
         # Register the forward hook
         forward_hook_handle = self.model.register_forward_hook(forward_hook)
