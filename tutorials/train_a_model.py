@@ -31,7 +31,9 @@ import toml
 toml_file = toml.load("../config.toml")
 
 # Define configuration
-train_config = TrainConfig(exp_name='test_2_run_fedya', p_augs=0.3, batch_size=64, eval_interval=150, num_workers=0)
+# Note: On Windows, due to multiprocessing restrictions, please set num_workers to 0.
+# On Linux, you can set it to 2 or higher for better performance.
+train_config = TrainConfig(exp_name='NumWorker_2', p_augs=0.3, batch_size=64, eval_interval=150, num_workers = 0)
 
 # Initialize Weights & Biases
 wandb.init(
