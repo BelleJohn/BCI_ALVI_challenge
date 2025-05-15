@@ -6,7 +6,7 @@ Code for logging the training process can be embedded directly in the train.py f
 from utils.train import TrainConfig, run_train_model
 import wandb
 import time
-
+import torch.nn.functional as F
 
 # Wrap the original run_train_model function to capture and log metrics
 class BasicLogger:
@@ -22,11 +22,16 @@ class BasicLogger:
         
         # Create a hook for monitoring training loss (might change this method)
         def forward_hook(module, input, output):
-            loss = output[0].item()  # See def forward() in hvatnet.py to know the item. Here is loss(0) and pred(1)
-
-            #output is loss
+            loss = output[0].item()  # Original L1 loss
+            pred = output[1]  
+            target = input[1]  
+            
+            # Calculate MSE directly with tensors (faster, no unnecessary conversions) compared to using sklearn
+            mse = F.mse_loss(pred, target).item()
+            
             wandb.log({
                 "train_loss": loss,
+                "train_mse": mse,
             })
             return output
         
