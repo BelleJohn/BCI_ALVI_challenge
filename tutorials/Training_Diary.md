@@ -2,6 +2,54 @@
 
 This document tracks the progress, experiments, and observations during the training of the baseline model.
 
+---
+## Date: 2025.05.19-2025.05.23
+[Link of training](https://wandb.ai/belle/BCI_ALVI_challenge/workspace?nw=nwuserbelle)
+
+### Objective:
+- Study preprocessing of EMG signals
+- Apply and test augmentations
+
+### Configuration:
+- **Model Architecture:** HVATNetv3
+- **Hyperparameters:**
+  - Batch Size: 64
+  - Learning Rate: 0.001
+  - Augmentation Probability: 0
+  - Number of Workers: 0 (due to Windows system)
+  - Other Parameters: eval_interval=150
+- **Dataset:**
+  - Training Dataset: dataset_v2_blocks
+  - Test Dataset: fedya_tropin_standart_elbow_left
+  - Data Transformations: Default Transformations
+
+### Results:
+- **Training Loss:** L1 loss 
+- **Validation Metrics:** MSE, MAE, RMSE
+
+- **Model Parameters:**
+  - Total Parameters: 4.23M
+  - Trainable Parameters: 4.23M
+  - Time taken: 18.6 mins
+
+### Observations/Note:
+- Preprocessing focuses on cleaning, aligning, and normalizing.
+- Augmentation focuses on creating variations for better generalization.
+
+### Post-Processing:
+- **Techniques Used:** None for baseline model
+- **Effect on Results:** None for baseline model
+
+### Next Steps:
+- Study and test post-processing
+
+### Reference:
+
+1. Reaz, M. B. I., Hussain, M. S., & Mohd-Yasin, F. (2006). Techniques of EMG signal analysis: detection, processing, classification and applications. *Biological Procedures Online, 8*, 11–35. [DOI](https://link.springer.com/article/10.1251/bpo115)
+
+
+---
+
 ## Date: 2025.05.12-2025.05.16
 [Link of training](https://wandb.ai/belle/BCI_ALVI_challenge/workspace?nw=nwuserbelle)
 
@@ -26,7 +74,6 @@ This document tracks the progress, experiments, and observations during the trai
 ### Results:
 - **Training Loss:** L1 loss 
 - **Validation Metrics:** MSE, MAE, RMSE
-  Note - Each Metric Provides Different Insights
     1. MSE (Mean Squared Error)
     - Standard regression metric
     - Emphasizes larger errors (due to squaring)
@@ -43,7 +90,7 @@ This document tracks the progress, experiments, and observations during the trai
 - **Model Parameters:**
   - Total Parameters: 4.23M
   - Trainable Parameters: 4.23M
-  **Time taken:** around 2.6 hr
+  - Time taken: 18.6 mins
 
 ### Observations:
 - [Record any observations during training, e.g., overfitting, underfitting, convergence issues, etc.]
