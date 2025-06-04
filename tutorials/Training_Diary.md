@@ -38,6 +38,7 @@ This document tracks the progress, experiments, and observations during the trai
 
 Analysis of Wavelet Augmentation Impact on Model Performance
 - Results Comparison
+
 | Metric | Without Augmentation | With Augmentation | Improvement |
 |--------|:--------------------:|:-----------------:|:-----------:|
 | val_loss | 0.3336 | 0.3314 | 0.64% ↓ |

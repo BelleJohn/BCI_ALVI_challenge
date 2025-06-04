@@ -20,7 +20,7 @@ import torch
 import wandb
 
 from utils.train import TrainConfig, run_train_model
-from utils.augmentations import get_default_transform
+from utils.augmentations import get_default_transform, get_custom_transform
 from utils import creating_dataset
 from utils.loggers import BasicLogger
 
@@ -33,7 +33,7 @@ toml_file = toml.load("../config.toml")
 # Define configuration
 # Note: On Windows, due to multiprocessing restrictions, please set num_workers to 0.
 # On Linux, you can set it to 2 or higher for better performance.
-train_config = TrainConfig(exp_name='NumWorker_2', p_augs=0.3, batch_size=64, eval_interval=150, num_workers = 0)
+train_config = TrainConfig(exp_name='test_aug_Wavelet', p_augs=0.3, batch_size=64, eval_interval=150, num_workers = 0)
 
 # Initialize Weights & Biases
 wandb.init(
@@ -56,7 +56,8 @@ wandb.init(
 DATA_PATH = toml_file['paths']['DATA_PATH']
 
 ## Data preparation
-transform = get_default_transform(train_config.p_augs)
+#transform = get_default_transform(train_config.p_augs)
+transform = get_custom_transform(train_config.p_augs)
 data_paths = dict(datasets=[DATA_PATH],
                     hand_type = ['left', 'right'], # [left, 'right']
                     human_type = ['health', 'amputant'], # [amputant, 'health']

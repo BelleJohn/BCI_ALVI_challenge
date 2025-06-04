@@ -81,7 +81,9 @@ def get_default_transform(p=0.0):
 # --- Start of Yun's Code ---
 
 class TimeMaskingMultichannel(BaseWaveformTransform):
-
+    """
+    Note: temporal masking could potentially affect the temporal relationship between EMG and motion.
+    """
     supports_multichannel = True 
 
     def __init__(self, max_mask_time, p=0.5):
