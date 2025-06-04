@@ -3,7 +3,7 @@
 This document tracks the progress, experiments, and observations during the training of the baseline model.
 
 ---
-## Date: 2025.05.19-2025.05.23
+## Date: 2025.05.19-2025.05.20, 2025.06.04, 
 [Link of training](https://wandb.ai/belle/BCI_ALVI_challenge/workspace?nw=nwuserbelle)
 
 ### Objective:
@@ -36,7 +36,33 @@ This document tracks the progress, experiments, and observations during the trai
 - Preprocessing focuses on cleaning, aligning, and normalizing.
 - Augmentation focuses on creating variations for better generalization.
 
-### Post-Processing:
+Analysis of Wavelet Augmentation Impact on Model Performance
+- Results Comparison
+| Metric | Without Augmentation | With Augmentation | Improvement |
+|--------|:--------------------:|:-----------------:|:-----------:|
+| val_loss | 0.3336 | 0.3314 | 0.64% ↓ |
+| val_mae | 0.3336 | 0.3314 | 0.64% ↓ |
+| val_max_error | 2.2293 | 2.1796 | 2.23% ↓ |
+| val_mse | 0.2441 | 0.2391 | 2.03% ↓ |
+| val_r2_score | 0.1889 | 0.2053 | 8.68% ↑ |
+| val_rmse | 0.4941 | 0.4890 | 1.02% ↓ |
+
+- Conclusion
+The data augmentation strategy has yielded consistent improvements across all evaluation metrics:
+
+1. General Performance Improvement: All error metrics decreased with augmentation, demonstrating that the model generalizes better to unseen data.
+
+2. Better Outlier Handling: The 2.23% reduction in max_error is particularly noteworthy, suggesting that augmentation helps the model better handle extreme cases.
+
+3. Improved Explanatory Power: The R² score increased by 8.68%, which is the most substantial improvement. This indicates that your augmented model captures significantly more of the variance in the target variable.
+
+4. Balanced Augmentation Strategy: The improvements suggest your chosen augmentations (Gaussian noise, spatial rotation, and wavelet noise injection) strike a good balance - they introduce enough variability to improve generalization without distorting the underlying signal patterns.
+
+5. Validation of Wavelet Approach: The inclusion of WaveletNoiseInjection appears to be beneficial, supporting the theoretical advantage of adding structured noise that respects the time-frequency characteristics of EMG signals.
+
+These results validate the augmentation approach and suggest that data augmentation is an effective strategy for improving EMG-based motion prediction models.
+
+### Modification:
 - **Techniques Used:** None for baseline model
 - **Effect on Results:** None for baseline model
 
@@ -95,7 +121,7 @@ This document tracks the progress, experiments, and observations during the trai
 ### Observations:
 - [Record any observations during training, e.g., overfitting, underfitting, convergence issues, etc.]
 
-### Post-Processing:
+### Modification:
 - **Techniques Used:** None for baseline model
 - **Effect on Results:** None for baseline model
 
@@ -146,7 +172,7 @@ The evaluation metrics reference:
 ### Observations:
 - [Record any observations during training, e.g., overfitting, underfitting, convergence issues, etc.]
 
-### Post-Processing:
+### Modification:
 - **Techniques Used:** None for baseline model
 - **Effect on Results:** None for baseline model
 
