@@ -63,17 +63,22 @@ The data augmentation strategy has yielded consistent improvements across all ev
 
 These results validate the augmentation approach and suggest that data augmentation is an effective strategy for improving EMG-based motion prediction models.
 
+- This method, wavelet injection noise, is not exactly the same as those used in other studies. However, I believe it still supports the underlying logic of using wavelet coefficient manipulation for data augmentation, even if this adding random noise differs from existing methods like masking or mixing.
+
 ### Modification:
 - **Techniques Used:** None for baseline model
 - **Effect on Results:** None for baseline model
 
 ### Next Steps:
-- Study and test post-processing
+- Study and test neural network strictures
 
 ### Reference:
 
 1. Reaz, M. B. I., Hussain, M. S., & Mohd-Yasin, F. (2006). Techniques of EMG signal analysis: detection, processing, classification and applications. *Biological Procedures Online, 8*, 11–35. [DOI](https://link.springer.com/article/10.1251/bpo115)
 
+2. Martinek, R., Ladrova, M., Sidikova, M., Jaros, R., Behbehani, K., Kahankova, R., & Kawala-Sterniuk, A. (2021). Advanced Bioelectrical Signal Processing Methods: Past, Present, and Future Approach—Part III: Other Biosignals. Sensors, 21(18), 6064. [DOI](https://doi.org/10.3390/s21186064)
+
+3. Arabi, D., Bakhshaliyev, J., Coskuner, A., Madhusudhanan, K., & Uckardes, K. S. (2024). Wave-Mask/Mix: Exploring Wavelet-Based Augmentations for Time Series Forecasting. arXiv preprint arXiv:2408.10951. [arXiv](https://www.arxiv.org/abs/2408.10951)
 
 ---
 
