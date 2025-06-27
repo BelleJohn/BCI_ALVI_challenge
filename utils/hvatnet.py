@@ -288,7 +288,7 @@ class HVATNetv3(nn.Module):
                                              n_filters=config.n_filters, kernel_size=config.kernel_size,
                                              dilation=config.dilation, strides=config.small_strides[::-1])
 
-        # self.rnn = RNN(input_size=config.n_filters, hidden_size=config.n_filters, num_layers=5, output_size=config.n_filters)
+        self.rnn = RNN(input_size=config.n_filters, hidden_size=config.n_filters, num_layers=5, output_size=config.n_filters)
         self.simple_pred_head = nn.Conv1d(config.n_filters, config.n_channels_out, kernel_size=1, padding='same')
 
         # Get number of parameters
@@ -343,7 +343,23 @@ class HVATNetv3(nn.Module):
             return x 
         else: 
             return F.normalize(x, p=2.0, dim=2)
+    
+    def state_dict(self):
+        """
+        Custom state_dict to handle RNN parameters properly. It also avoids conflicts when using Unet way.
+        This method ensures that the RNN parameters are cloned to avoid issues with storage sharing.
+        The issue might occur when using the RNN method with PyTorch's nn.GRU module saved with safetensors.
+        """
+        state = dict(super().state_dict())
         
+        # Create a deep copy of RNN parameters to avoid storage sharing issues
+        rnn_keys = [k for k in state.keys() if k.startswith('rnn.')]
+        
+        for key in rnn_keys:
+            state[key] = state[key].clone()
+        
+        return state
+
     @property
     def dtype(self) -> torch.dtype:
         return next(self.parameters()).dtype
@@ -372,6 +388,7 @@ class HVATNetv3(nn.Module):
         y_pred = y_pred[0].to('cpu').detach().numpy()
 
         return y_pred.T
+    
 
 
 # start python code 
