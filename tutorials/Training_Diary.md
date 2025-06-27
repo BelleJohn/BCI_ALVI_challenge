@@ -3,6 +3,68 @@
 This document tracks the progress, experiments, and observations during the training of the baseline model.
 
 ---
+
+## Date: 27.06.2025
+[Link of training](https://wandb.ai/belle/BCI_ALVI_challenge/workspace?nw=nwuserbelle)
+
+### Objective:
+- Study and apply RNN structure and its variants
+
+### Configuration:
+- **Model Architecture:** HVATNetv3_RNN
+- **Hyperparameters:**
+  - Batch Size: 64
+  - Learning Rate: 0.001
+  - Augmentation Probability: 0
+  - Number of Workers: 0 (due to Windows system)
+  - Other Parameters: eval_interval=150
+- **Dataset:**
+  - Training Dataset: dataset_v2_blocks
+  - Test Dataset: fedya_tropin_standart_elbow_left
+  - Data Transformations: Default Transformations
+
+### Results:
+- **Training Loss:** L1 loss 
+- **Validation Metrics:** MSE, MAE, RMSE
+
+- **Model Parameters:**
+  - Total Parameters: 4.23M
+  - Trainable Parameters: 4.23M
+  - Time taken: 18.6 mins
+
+### Observations/Note:
+> Modification: Applied an RNN model to enhance temporal sequence learning.
+1. It has a potential overfitting trend. The training loss drops significantly in the early steps, then plateaus and fluctuates, hovering around 0.3. The stability of the validation loss combined with a flattening and fluctuating training curve might be that the model is memorizing rather than learning general features (a subtle form of overfitting).
+
+- Results Comparison
+
+| **Metric**        | **UNET Model** | **RNN Model** | **Improvement** |
+|-------------------|----------------|----------------|------------------|
+| val_loss        | 0.3336         | 0.1920         | ↓ 42.45%         |
+| val_mae         | 0.3336         | 0.1920         | ↓ 42.45%         |
+| val_max_error   | 2.2293         | 1.2462         | ↓ 44.10%         |
+| val_mse         | 0.2441         | 0.0936         | ↓ 61.67%         |
+| val_r2_score    | 0.1889         | 0.3159         | ↑ 67.19%         |
+| val_rmse        | 0.4941         | 0.3059         | ↓ 38.09%         |
+
+
+2. Overall, the RNN model demonstrates better performance across all metrics compared to the UNET architecture:
+  1) **Temporal Modeling Advantage:** The RNN model shows a 42-62% reduction in error metrics, highlighting its natural advantage in modeling sequential temporal data like EMG signals.
+  2) **Significant R² Improvement:** The 67.19% increase in R² score (from 0.19 to 0.32) indicates the RNN is capturing much more of the variance in joint angles.
+  3) **Better Extreme Case Handling:** The 44.10% reduction in maximum error suggests RNNs provide more robust predictions even for unusual movement patterns.
+
+ 
+
+### Next Steps:
+- Utilize LSTM and restructure the codebase to ensure adaptable and maintainable design.
+- If using the same model (RNN), here are the things to try:
+  1. Apply regularization (e.g. Dropout, weight decay).
+  2. Use early stopping based on validation performance.
+  3. Consider simplifying the model if it's too expressive for the dataset.
+  4. Experiment with adding noise or data augmentation.
+
+---
+
 ## Date: 2025.05.19-2025.05.20, 2025.06.04, 
 [Link of training](https://wandb.ai/belle/BCI_ALVI_challenge/workspace?nw=nwuserbelle)
 
@@ -11,7 +73,7 @@ This document tracks the progress, experiments, and observations during the trai
 - Apply and test augmentations
 
 ### Configuration:
-- **Model Architecture:** HVATNetv3
+- **Model Architecture:** HVATNetv3_UNET
 - **Hyperparameters:**
   - Batch Size: 64
   - Learning Rate: 0.001
