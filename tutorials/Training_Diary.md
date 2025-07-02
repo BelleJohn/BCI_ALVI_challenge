@@ -4,7 +4,7 @@ This document tracks the progress, experiments, and observations during the trai
 
 ---
 
-## Date: 27.06.2025
+## Date: 27.06.2025, 02.07.2025
 [Link of training](https://wandb.ai/belle/BCI_ALVI_challenge/workspace?nw=nwuserbelle)
 
 ### Objective:
@@ -34,34 +34,48 @@ This document tracks the progress, experiments, and observations during the trai
 
 ### Observations/Note:
 > Modification: Applied an RNN model to enhance temporal sequence learning.
-1. It has a potential overfitting trend. The training loss drops significantly in the early steps, then plateaus and fluctuates, hovering around 0.3. The stability of the validation loss combined with a flattening and fluctuating training curve might be that the model is memorizing rather than learning general features (a subtle form of overfitting).
 
 - Results Comparison
 
-| **Metric**        | **UNET Model** | **RNN Model** | **Improvement** |
-|-------------------|----------------|----------------|------------------|
-| val_loss        | 0.3336         | 0.1920         | ↓ 42.45%         |
-| val_mae         | 0.3336         | 0.1920         | ↓ 42.45%         |
-| val_max_error   | 2.2293         | 1.2462         | ↓ 44.10%         |
-| val_mse         | 0.2441         | 0.0936         | ↓ 61.67%         |
-| val_r2_score    | 0.1889         | 0.3159         | ↑ 67.19%         |
-| val_rmse        | 0.4941         | 0.3059         | ↓ 38.09%         |
+  | **Metric**        | **UNET Model** | **RNN Model** | **Improvement** |
+  |-------------------|----------------|----------------|------------------|
+  | val_loss        | 0.3336         | 0.1920         | ↓ 42.45%         |
+  | val_mae         | 0.3336         | 0.1920         | ↓ 42.45%         |
+  | val_max_error   | 2.2293         | 1.2462         | ↓ 44.10%         |
+  | val_mse         | 0.2441         | 0.0936         | ↓ 61.67%         |
+  | val_r2_score    | 0.1889         | 0.3159         | ↑ 67.19%         |
+  | val_rmse        | 0.4941         | 0.3059         | ↓ 38.09%         |
 
+1. It has a potential overfitting trend. The training loss drops significantly in the early steps, then plateaus and fluctuates, hovering around 0.3. The stability of the validation loss combined with a flattening and fluctuating training curve might be that **the model is memorizing rather than learning general features** (a subtle form of overfitting).
 
 2. Overall, the RNN model demonstrates better performance across all metrics compared to the UNET architecture:
-  1) **Temporal Modeling Advantage:** The RNN model shows a 42-62% reduction in error metrics, highlighting its natural advantage in modeling sequential temporal data like EMG signals.
-  2) **Significant R² Improvement:** The 67.19% increase in R² score (from 0.19 to 0.32) indicates the RNN is capturing much more of the variance in joint angles.
-  3) **Better Extreme Case Handling:** The 44.10% reduction in maximum error suggests RNNs provide more robust predictions even for unusual movement patterns.
+  1. **Temporal Modeling Advantage:** The RNN model shows a 42-62% reduction in error metrics, highlighting its natural advantage in modeling sequential temporal data like EMG signals.
+  2. **Significant R² Improvement:** The 67.19% increase in R² score (from 0.19 to 0.32) indicates the RNN is capturing much more of the variance in joint angles.
+  3. **Better Extreme Case Handling:** The 44.10% reduction in maximum error suggests RNNs provide more robust predictions even for unusual movement patterns.
 
+3. To be noted, although the metrics suggest the RNN model outperforms the UNET model, the results aren't expected the same when we used unseen data. This apparent contradiction might be explained through understanding model generalization versus overfitting.
+
+- Why RNN Shows Better Metrics But Worse Real-World Performance
+  1. Dataset-Specific Memorization
+    - The RNN likely "memorized" specific patterns in the training/validation datasets
+    - These patterns don't transfer well to new datasets with different characteristics
+
+  2. Temporal Overfitting
+    - RNNs are particularly sensitive to the temporal structure of the specific datasets they're trained on
+    - They may learn dataset-specific timing relationships rather than general EMG-to-motion principles
  
+  3. Suspiciously Large Improvements
+    - The 61.67% reduction in MSE and 67.19% improvement in R² score are dramatically large. Such dramatic improvements often signal that a model is exploiting dataset-specific patterns.
+  
 
 ### Next Steps:
 - Utilize LSTM and restructure the codebase to ensure adaptable and maintainable design.
 - If using the same model (RNN), here are the things to try:
-  1. Apply regularization (e.g. Dropout, weight decay).
-  2. Use early stopping based on validation performance.
-  3. Consider simplifying the model if it's too expressive for the dataset.
-  4. Experiment with adding noise or data augmentation.
+  - Apply regularization (e.g. Dropout, weight decay, L2 regularization).
+  - Use early stopping based on validation performance.
+  - Consider simplifying the model if it's too expressive for the dataset.
+  - Experiment with adding noise or data augmentation.
+  - Hybrid Approach: Consider combining UNET's feature extraction with limited RNN layers for temporal modeling
 
 ---
 
